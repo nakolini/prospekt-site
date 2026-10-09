@@ -1,0 +1,356 @@
+[
+  {
+    "slug": "canon-r5-ii",
+    "brand": "Canon",
+    "name": "R5 II",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-r6-iii",
+    "brand": "Canon",
+    "name": "R6 III",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-r8",
+    "brand": "Canon",
+    "name": "R8",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-r6-ii",
+    "brand": "Canon",
+    "name": "R6 II",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-eos-r",
+    "brand": "Canon",
+    "name": "EOS R",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-eos-5d-iv",
+    "brand": "Canon",
+    "name": "EOS 5D IV",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-eos-6d",
+    "brand": "Canon",
+    "name": "EOS 6D",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-eos-6d-ii",
+    "brand": "Canon",
+    "name": "EOS 6D II",
+    "crop": 1.0
+  },
+  {
+    "slug": "canon-r7",
+    "brand": "Canon",
+    "name": "R7",
+    "crop": 1.6
+  },
+  {
+    "slug": "canon-r10",
+    "brand": "Canon",
+    "name": "R10",
+    "crop": 1.6
+  },
+  {
+    "slug": "canon-r50",
+    "brand": "Canon",
+    "name": "R50",
+    "crop": 1.6
+  },
+  {
+    "slug": "canon-r100",
+    "brand": "Canon",
+    "name": "R100",
+    "crop": 1.6
+  },
+  {
+    "slug": "canon-eos-7d-ii",
+    "brand": "Canon",
+    "name": "EOS 7D II",
+    "crop": 1.6
+  },
+  {
+    "slug": "sony-a1",
+    "brand": "Sony",
+    "name": "A1",
+    "crop": 1.0
+  },
+  {
+    "slug": "sony-a9-iii",
+    "brand": "Sony",
+    "name": "A9 III",
+    "crop": 1.0
+  },
+  {
+    "slug": "sony-a7r-v",
+    "brand": "Sony",
+    "name": "A7R V",
+    "crop": 1.0
+  },
+  {
+    "slug": "sony-a7-iv",
+    "brand": "Sony",
+    "name": "A7 IV",
+    "crop": 1.0
+  },
+  {
+    "slug": "sony-a7c-ii",
+    "brand": "Sony",
+    "name": "A7C II",
+    "crop": 1.0
+  },
+  {
+    "slug": "sony-a6700",
+    "brand": "Sony",
+    "name": "A6700",
+    "crop": 1.5
+  },
+  {
+    "slug": "sony-a6400",
+    "brand": "Sony",
+    "name": "A6400",
+    "crop": 1.5
+  },
+  {
+    "slug": "sony-zv-e10-ii",
+    "brand": "Sony",
+    "name": "ZV-E10 II",
+    "crop": 1.5
+  },
+  {
+    "slug": "nikon-z9",
+    "brand": "Nikon",
+    "name": "Z9",
+    "crop": 1.0
+  },
+  {
+    "slug": "nikon-z8",
+    "brand": "Nikon",
+    "name": "Z8",
+    "crop": 1.0
+  },
+  {
+    "slug": "nikon-z6-iii",
+    "brand": "Nikon",
+    "name": "Z6 III",
+    "crop": 1.0
+  },
+  {
+    "slug": "nikon-z5-ii",
+    "brand": "Nikon",
+    "name": "Z5 II",
+    "crop": 1.0
+  },
+  {
+    "slug": "nikon-zf",
+    "brand": "Nikon",
+    "name": "Zf",
+    "crop": 1.0
+  },
+  {
+    "slug": "nikon-z50-ii",
+    "brand": "Nikon",
+    "name": "Z50 II",
+    "crop": 1.5
+  },
+  {
+    "slug": "nikon-z50",
+    "brand": "Nikon",
+    "name": "Z50",
+    "crop": 1.5
+  },
+  {
+    "slug": "nikon-zfc",
+    "brand": "Nikon",
+    "name": "Zfc",
+    "crop": 1.5
+  },
+  {
+    "slug": "fujifilm-gfx-100-ii",
+    "brand": "Fujifilm",
+    "name": "GFX 100 II",
+    "crop": 0.79
+  },
+  {
+    "slug": "fujifilm-gfx-100s-ii",
+    "brand": "Fujifilm",
+    "name": "GFX 100S II",
+    "crop": 0.79
+  },
+  {
+    "slug": "fujifilm-x-t5",
+    "brand": "Fujifilm",
+    "name": "X-T5",
+    "crop": 1.5
+  },
+  {
+    "slug": "fujifilm-x-h2s",
+    "brand": "Fujifilm",
+    "name": "X-H2S",
+    "crop": 1.5
+  },
+  {
+    "slug": "fujifilm-x-h2",
+    "brand": "Fujifilm",
+    "name": "X-H2",
+    "crop": 1.5
+  },
+  {
+    "slug": "fujifilm-x-s20",
+    "brand": "Fujifilm",
+    "name": "X-S20",
+    "crop": 1.5
+  },
+  {
+    "slug": "fujifilm-x-t30-ii",
+    "brand": "Fujifilm",
+    "name": "X-T30 II",
+    "crop": 1.5
+  },
+  {
+    "slug": "panasonic-s5-iix",
+    "brand": "Panasonic",
+    "name": "S5 IIX",
+    "crop": 1.0
+  },
+  {
+    "slug": "panasonic-s5-ii",
+    "brand": "Panasonic",
+    "name": "S5 II",
+    "crop": 1.0
+  },
+  {
+    "slug": "panasonic-s1h",
+    "brand": "Panasonic",
+    "name": "S1H",
+    "crop": 1.0
+  },
+  {
+    "slug": "panasonic-gh7",
+    "brand": "Panasonic",
+    "name": "GH7",
+    "crop": 2.0
+  },
+  {
+    "slug": "panasonic-gh6",
+    "brand": "Panasonic",
+    "name": "GH6",
+    "crop": 2.0
+  },
+  {
+    "slug": "panasonic-g9-ii",
+    "brand": "Panasonic",
+    "name": "G9 II",
+    "crop": 2.0
+  },
+  {
+    "slug": "om-system-om-1-ii",
+    "brand": "OM System",
+    "name": "OM-1 II",
+    "crop": 2.0
+  },
+  {
+    "slug": "om-system-om-1",
+    "brand": "OM System",
+    "name": "OM-1",
+    "crop": 2.0
+  },
+  {
+    "slug": "om-system-om-5",
+    "brand": "OM System",
+    "name": "OM-5",
+    "crop": 2.0
+  },
+  {
+    "slug": "leica-m11",
+    "brand": "Leica",
+    "name": "M11",
+    "crop": 1.0
+  },
+  {
+    "slug": "leica-sl3",
+    "brand": "Leica",
+    "name": "SL3",
+    "crop": 1.0
+  },
+  {
+    "slug": "leica-q3",
+    "brand": "Leica",
+    "name": "Q3",
+    "crop": 1.0
+  },
+  {
+    "slug": "leica-cl",
+    "brand": "Leica",
+    "name": "CL",
+    "crop": 1.5
+  },
+  {
+    "slug": "leica-tl2",
+    "brand": "Leica",
+    "name": "TL2",
+    "crop": 1.5
+  },
+  {
+    "slug": "hasselblad-x2d",
+    "brand": "Hasselblad",
+    "name": "X2D",
+    "crop": 0.79
+  },
+  {
+    "slug": "hasselblad-x1d-ii",
+    "brand": "Hasselblad",
+    "name": "X1D II",
+    "crop": 0.79
+  },
+  {
+    "slug": "hasselblad-907x",
+    "brand": "Hasselblad",
+    "name": "907X",
+    "crop": 0.79
+  },
+  {
+    "slug": "pentax-k-1-iii",
+    "brand": "Pentax",
+    "name": "K-1 III",
+    "crop": 1.0
+  },
+  {
+    "slug": "pentax-k-1-ii",
+    "brand": "Pentax",
+    "name": "K-1 II",
+    "crop": 1.0
+  },
+  {
+    "slug": "pentax-k-3-iii",
+    "brand": "Pentax",
+    "name": "K-3 III",
+    "crop": 1.5
+  },
+  {
+    "slug": "pentax-kf",
+    "brand": "Pentax",
+    "name": "KF",
+    "crop": 1.5
+  },
+  {
+    "slug": "sigma-fp-l",
+    "brand": "Sigma",
+    "name": "fp L",
+    "crop": 1.0
+  },
+  {
+    "slug": "sigma-fp",
+    "brand": "Sigma",
+    "name": "fp",
+    "crop": 1.0
+  }
+]
