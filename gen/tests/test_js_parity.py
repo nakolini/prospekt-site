@@ -15,7 +15,8 @@ CASES = [(f, c) for f in [14, 24, 35, 50, 85, 135, 300] for c in [0.79, 1.0, 1.5
 SCRIPT = """
 const m = require(%s);
 const cases = %s;
-console.log(JSON.stringify(cases.map(([f, c]) => [m.angles(f, c), m.frameInPhoto(f, c, 14, 1.5), m.frameInPhoto(f, c, 26, 0.75)])));
+console.log(JSON.stringify(cases.map(([f, c]) => [m.angles(f, c), m.frameInPhoto(f, c, 14, 1.5), m.frameInPhoto(f, c, 26, 0.75),
+  m.frameInPhoto(f, c, 31, 1.5, true)])));
 """
 
 
@@ -23,19 +24,22 @@ console.log(JSON.stringify(cases.map(([f, c]) => [m.angles(f, c), m.frameInPhoto
 class JsParityTest(unittest.TestCase):
     def test_js_math_matches_python(self):
         out = subprocess.check_output(["node", "-e", SCRIPT % (json.dumps(JS), json.dumps(CASES))])
-        for (focal, crop), (angles, frame, portrait) in zip(CASES, json.loads(out)):
+        for (focal, crop), (angles, frame, portrait, vertical) in zip(CASES, json.loads(out)):
             for a, b in zip(angles, lm.angles(focal, crop)):
                 self.assertAlmostEqual(a, b, places=9)
             for a, b in zip(frame, lm.frame_in_photo(focal, crop, 14, 1.5)):
                 self.assertAlmostEqual(a, b, places=9)
             for a, b in zip(portrait, lm.frame_in_photo(focal, crop, 26, 0.75)):
                 self.assertAlmostEqual(a, b, places=9)
+            for a, b in zip(vertical, lm.frame_in_photo(focal, crop, 31, 1.5, vertical=True)):
+                self.assertAlmostEqual(a, b, places=9)
 
 
 DISTANCE_SCRIPT = """
 const m = require(%s);
 const cases = %s;
-console.log(JSON.stringify(cases.map(([f, c, d, v, fill]) => [m.coverage(f, c, d), m.distanceToFit(d, f, c, v, fill)])));
+console.log(JSON.stringify(cases.map(([f, c, d, v, fill]) => [m.coverage(f, c, d), m.distanceToFit(d, f, c, v, fill),
+  m.focalToFit(d, f / 10, c, v, fill)])));
 """
 DISTANCE_CASES = [(f, c, d, v, fill) for f in [14, 35, 85, 135, 600] for c in [0.79, 1.0, 1.5, 1.6, 2.0]
                   for d in [0.5, 1.8, 3, 32.8] for v in [True, False] for fill in [0.9, 1.0]]
@@ -45,10 +49,12 @@ DISTANCE_CASES = [(f, c, d, v, fill) for f in [14, 35, 85, 135, 600] for c in [0
 class JsDistanceParityTest(unittest.TestCase):
     def test_js_distance_math_matches_python(self):
         out = subprocess.check_output(["node", "-e", DISTANCE_SCRIPT % (json.dumps(JS), json.dumps(DISTANCE_CASES))])
-        for (focal, crop, d, vertical, fill), (cover, fit) in zip(DISTANCE_CASES, json.loads(out)):
+        for (focal, crop, d, vertical, fill), (cover, fit, lens) in zip(DISTANCE_CASES, json.loads(out)):
             for a, b in zip(cover, lm.coverage(focal, crop, d)):
                 self.assertAlmostEqual(a, b, places=9)
             self.assertAlmostEqual(fit, lm.distance_to_fit(d, focal, crop, vertical, fill), places=9)
+            # focal / 10 as a distance: 1.4 to 60 m.
+            self.assertAlmostEqual(lens, lm.focal_to_fit(d, focal / 10, crop, vertical, fill), places=9)
 
 
 if __name__ == "__main__":

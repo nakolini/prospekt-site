@@ -577,8 +577,9 @@ def body_options(lang, bodies):
 
 TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share",
                 "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d",
-                "tool.table_covers", "tool.table_fit", "tool.preview_hint", "tool.lens_cta",
-                "tool.distance_summary"]
+                 "tool.table_covers", "tool.table_fit", "tool.preview_hint", "tool.lens_cta",
+                 "tool.distance_summary", "tool.outside_photo", "tool.use_sample", "tool.scene_note",
+                 "tool.fit_body_result", "tool.fit_head_result"]
 
 ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70, 200), (100, 400), (150, 600)]
 
@@ -597,11 +598,13 @@ def tool_page(lang, bodies):
         f, "true" if f in default_focals else "false", f) for f in lm.TABLE_FOCAL_LENGTHS)
     zoom_chips = "".join('<button type="button" class="chip" data-zoom="%d-%d" aria-pressed="false">%d-%d</button>' % (
         a, b, a, b) for a, b in ZOOM_PRESETS)
-    strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}") for k in TOOL_JS_KEYS}
+    strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}", equiv="{equiv}")
+               for k in TOOL_JS_KEYS}
     # The camera lists are filled in by the script, so the page's text doesn't open with 120 camera names.
     data = json.dumps({"strings": strings, "samples": SAMPLES, "lang": lang.code, "options": body_options(lang, bodies),
                        "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl",
-                       "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M},
+                       "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M, "eye": lm.EYE_LEVEL_M,
+                       "head": lm.HEAD_SHOULDERS_M / lm.FULL_BODY_M},
                       ensure_ascii=False).replace("</", "<\\/")
     # Sample photos as tiles; the radio's name is the full label, the tile shows the focal length.
     samples = "".join(
@@ -609,6 +612,11 @@ def tool_page(lang, bodies):
         '<img src="{root}%s" width="240" height="160" alt=""><span class="tile-text">%s</span></label>' % (
             i, " checked" if i == 0 else "", e(html.unescape(lang.t(sample["label_key"]))), sample["thumb"],
             lang.mm(sample["focal"])) for i, sample in enumerate(SAMPLES))
+    # The person scene, drawn by the script (the tile too).
+    samples += ('<label class="tile"><input type="radio" name="photo" value="person" aria-label="%s">'
+                '<svg class="tile-scene" id="person-thumb" viewBox="0 0 1000 666.667" aria-hidden="true"></svg>'
+                '<span class="tile-text">%s</span></label>' % (
+                    e(html.unescape(lang.t("tool.photo_person_label"))), lang.t("tool.photo_person")))
     # The photo comes first and stays in view while the controls change it (site.css);
     # the table, notes and sharing follow.
     body = """<h1>{h1}</h1>
@@ -618,8 +626,10 @@ def tool_page(lang, bodies):
 <div class="workspace">
 <div class="viewer" id="viewer">
 <div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}
+<svg class="scene" id="scene" viewBox="0 0 1000 666.667" aria-hidden="true" hidden></svg>
 <button type="button" class="lens-back" id="lens-back" hidden>{lens_back}</button></div>
 <p class="legend" id="legend" hidden></p>
+<div class="scene-actions" id="scene-actions" hidden><button type="button" data-fit="body"><svg class="figure" viewBox="-150 -10 300 1020" aria-hidden="true"></svg>{fit_body}</button><button type="button" data-fit="head"><svg class="figure" viewBox="-150 -10 300 290" aria-hidden="true"></svg>{fit_head}</button></div>
 <p class="viewer-hint" id="viewer-hint">{preview_hint}</p>
 <p class="lens-cta" id="lens-cta" hidden><a href="{lens_url}"></a></p>
 <p class="notes" id="notes"></p>
@@ -644,6 +654,7 @@ def tool_page(lang, bodies):
 <div id="own" hidden><input id="file" type="file" accept="image/*">
 <label class="field">{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26"></label>
 <p class="muted">{photo_focal_hint} {photo_private}</p></div>
+<p class="muted" id="scene-note" hidden></p>
 </div>
 <details class="group distance">
 <summary><span class="group-label">{distance_legend}</span> <span class="summary-value" id="distance-summary"></span></summary>
@@ -677,6 +688,7 @@ def tool_page(lang, bodies):
         h1=lang.t("tool.h1"), lead=lang.t("tool.lead"), noscript=lang.t("tool.noscript"),
         body_label=lang.t("tool.body_label"), body2_label=lang.t("tool.body2_label"),
         body2_add=lang.t("tool.body2_add"), lens_back=lang.t("tool.lens_back"),
+        fit_body=lang.t("tool.fit_body"), fit_head=lang.t("tool.fit_head"),
         angles_toggle=lang.t("tool.angles_toggle"), app_url=e(app_store_url("web_lenstool_inline")),
         lens_url=e(app_store_url("web_lensview")), app_line=lang.with_app("app.line_tool", "web_lenstool_line"),
         cta_title=lang.t("cta.box_title"), app_short=lang.t("cta.app_store_short"),
@@ -902,7 +914,7 @@ def llms_txt(bodies):
         "",
         "- [Prospekt for iPhone](%s/): what it does, price, privacy, limits, comparison, FAQ" % BASE_URL,
         "- [Lens comparison tool](%s/lens-compare/): free web tool, frames of any focal lengths and zooms on one or two "
-        "bodies over a photo, how much of the scene each lens covers at a distance, and how far to stand to fit a "
+        "bodies over a photo or a standing person drawn to scale, how much of the scene each lens covers at a distance, and how far to stand to fit a "
         "subject (metres or feet). The distance calculator is part of the web tool, not the app" % BASE_URL,
         "- [Cameras](%s/cameras/): focal length, full-frame equivalent and angle of view tables for %d camera bodies, "
         "what 24 to 135 mm cover at 1 to 10 m, and portrait distances (full body, head and shoulders)" % (BASE_URL, len(bodies)),

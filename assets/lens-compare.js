@@ -26,8 +26,10 @@
     return [angleOfView(s[0], focal), angleOfView(s[1], focal), angleOfView(Math.hypot(s[0], s[1]), focal)];
   }
 
-  function frameInPhoto(focal, crop, photoEquivalent, photoAspect) {
+  // A vertical frame puts the sensor's long side upright.
+  function frameInPhoto(focal, crop, photoEquivalent, photoAspect, vertical) {
     var s = sensorSize(crop);
+    if (vertical) s = [s[1], s[0]];
     var unit = FULL_FRAME_DIAGONAL / Math.hypot(photoAspect, 1);
     var photoHalfW = (photoAspect * unit) / 2 / photoEquivalent;
     var photoHalfH = unit / 2 / photoEquivalent;
@@ -88,9 +90,16 @@
     return ((subject / fill) * focal) / (vertical ? s[0] : s[1]);
   }
 
+  // The focal length that fits a subject of this height at a distance.
+  function focalToFit(subject, distance, crop, vertical, fill) {
+    var s = sensorSize(crop);
+    return (distance * fill * (vertical ? s[0] : s[1])) / subject;
+  }
+
   var LensMath = {
     exifEquivalentFocal: exifEquivalentFocal, sensorAspect: sensorAspect, sensorSize: sensorSize,
     angles: angles, frameInPhoto: frameInPhoto, coverage: coverage, distanceToFit: distanceToFit,
+    focalToFit: focalToFit,
   };
   if (typeof module !== "undefined" && module.exports) {
     module.exports = LensMath;
@@ -132,6 +141,9 @@
   var fileInput = $("file");
   var photoFocalInput = $("photo-focal");
   var shareStatus = $("share-status");
+  var scene = $("scene");
+  var sceneActions = $("scene-actions");
+  var sceneNote = $("scene-note");
 
   var state = {
     bodies: ["generic-1", ""],
@@ -145,6 +157,11 @@
     photoFocal: data.samples[0].focal,
     selected: null,
     ownUrl: null,
+    // The person scene instead of a photo, aimed at the body or the head;
+    // fit is the last "Fit" action, so its lens view can say what it picked.
+    scene: false,
+    aim: "body",
+    fit: null,
   };
 
   function num(value, decimals) {
@@ -244,6 +261,99 @@
 
   function key(focal, slot) { return focal + "|" + slot; }
 
+  // The person scene. The right half of a standing figure, 1000 units from
+  // the top of the head to the soles, as cubic segments from the crown down
+  // the outside of the arm and leg and back up to the crotch; mirrored below.
+  var FIGURE_HALF = [
+    [29, 0, 48, 18, 48, 52], [51, 55, 53, 66, 52, 80], [51, 89, 48, 93, 45, 95], [43, 108, 37, 116, 30, 124],
+    [26, 128, 25, 134, 25, 144], [26, 156, 30, 166, 46, 172], [72, 180, 104, 182, 120, 192],
+    [136, 204, 142, 228, 141, 256], [141, 300, 139, 360, 138, 410], [140, 440, 142, 470, 140, 500],
+    [138, 525, 134, 545, 132, 560], [136, 585, 138, 620, 128, 646], [122, 660, 108, 660, 106, 644],
+    [102, 620, 106, 590, 110, 562], [112, 520, 112, 470, 115, 420], [116, 360, 112, 300, 104, 264],
+    [100, 300, 87, 352, 85, 402], [84, 440, 97, 468, 99, 510], [101, 560, 95, 650, 84, 738],
+    [80, 772, 87, 800, 83, 850], [79, 900, 62, 930, 58, 955], [62, 972, 76, 984, 76, 993],
+    [76, 1002, 64, 1003, 48, 1003], [38, 1003, 24, 1003, 23, 994], [22, 982, 26, 968, 26, 950],
+    [22, 900, 19, 860, 23, 815], [25, 780, 20, 752, 20, 732], [18, 650, 10, 582, 0, 542],
+  ];
+  var FIGURE = (function () {
+    var ends = [[0, 0]].concat(FIGURE_HALF.map(function (c) { return [c[4], c[5]]; }));
+    var d = "M0 0" + FIGURE_HALF.map(function (c) { return "C" + c.join(" "); }).join("");
+    for (var i = FIGURE_HALF.length - 1; i >= 0; i--) {
+      var c = FIGURE_HALF[i];
+      d += "C" + [-c[2], c[3], -c[0], c[1], -ends[i][0], ends[i][1]].join(" ");
+    }
+    return d + "Z";
+  })();
+
+  function gradient(defs, id, attrs, stops) {
+    var g = svgEl("linearGradient", Object.assign({ id: id, gradientUnits: "userSpaceOnUse" }, attrs));
+    stops.forEach(function (stop) { g.appendChild(svgEl("stop", { offset: stop[0], "stop-color": stop[1] })); });
+    defs.appendChild(g);
+  }
+
+  // A level camera at eye level, a floor of 1 m tiles running to the horizon
+  // and a figure of the subject height at the subject distance. Everything is
+  // projected like the photos (size / distance x focal), with the view shifted
+  // so the aim point is in the middle: what's at the subject distance is
+  // exactly to scale, and the frames are centred on the body or the head.
+  // o: focal (35 mm equivalent of the whole scene), aspect, distance, height,
+  // eye and tile (in the unit of distance), aim (height of the middle), id.
+  function drawScene(svg, o) {
+    var w = 1000, h = w / o.aspect;
+    var unit = FULL_FRAME_DIAGONAL / Math.hypot(o.aspect, 1);
+    var k = (w / 2) / ((o.aspect * unit) / 2 / o.focal);
+    var shift = (o.aim - o.eye) / o.distance;
+    function sy(height, distance) { return h / 2 - ((height - o.eye) / distance - shift) * k; }
+    var horizon = h / 2 + shift * k;
+    svg.textContent = "";
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    var defs = svgEl("defs", {});
+    svg.appendChild(defs);
+    // Shading by angle from the horizon, so it zooms like the scene.
+    gradient(defs, o.id + "-wall", { x1: 0, y1: horizon - 0.6 * k, x2: 0, y2: horizon },
+      [[0, "#2a2f37"], [0.75, "#4d5662"], [1, "#6a7480"]]);
+    gradient(defs, o.id + "-floor", { x1: 0, y1: horizon, x2: 0, y2: horizon + 0.9 * k },
+      [[0, "#5a636e"], [0.35, "#454c56"], [1, "#24282e"]]);
+    gradient(defs, o.id + "-grid", { x1: 0, y1: horizon, x2: 0, y2: horizon + 0.5 * k },
+      [[0, "rgba(255,255,255,0)"], [1, "rgba(255,255,255,0.13)"]]);
+    gradient(defs, o.id + "-body", { x1: -140, y1: 0, x2: 140, y2: 0 },
+      [[0, "#262a31"], [0.6, "#16191d"], [1, "#101215"]]);
+    var shade = svgEl("radialGradient", { id: o.id + "-shadow" });
+    shade.appendChild(svgEl("stop", { offset: 0, "stop-color": "rgba(0,0,0,0.5)" }));
+    shade.appendChild(svgEl("stop", { offset: 1, "stop-color": "rgba(0,0,0,0)" }));
+    defs.appendChild(shade);
+    var top = Math.max(0, Math.min(h, horizon));
+    if (top > 0) svg.appendChild(svgEl("rect", { x: 0, y: 0, width: w, height: top, fill: "url(#" + o.id + "-wall)" }));
+    if (top < h) svg.appendChild(svgEl("rect", { x: 0, y: top, width: w, height: h - top, fill: "url(#" + o.id + "-floor)" }));
+    // The nearest floor in view, then tile lines across it and towards the horizon.
+    var below = (h / 2) / k - shift;
+    if (below > 0) {
+      var near = o.eye / below;
+      var lines = [];
+      for (var n = Math.ceil(near / o.tile); n < 400; n++) {
+        var y = sy(0, n * o.tile);
+        if (lines.length && y - horizon < 1.5) break;
+        lines.push("M0 " + y + "H" + w);
+      }
+      var reach = Math.min(200, Math.ceil((near * (w / 2)) / k / o.tile) + 1);
+      for (var i = -reach; i < reach; i++) {
+        var x = (i + 0.5) * o.tile;
+        lines.push("M" + (w / 2 + (x / near) * k) + " " + sy(0, near) + "L" + w / 2 + " " + horizon);
+      }
+      svg.appendChild(svgEl("path", { d: lines.join(""), stroke: "url(#" + o.id + "-grid)", "stroke-width": 1.2, fill: "none" }));
+    }
+    var feet = sy(0, o.distance);
+    var scale = (o.height / 1000) * (k / o.distance);
+    svg.appendChild(svgEl("ellipse", {
+      cx: w / 2, cy: feet, rx: 190 * scale, ry: Math.max(1, (o.eye * 0.3 * k) / o.distance / o.distance),
+      fill: "url(#" + o.id + "-shadow)",
+    }));
+    svg.appendChild(svgEl("path", {
+      d: FIGURE, fill: "url(#" + o.id + "-body)",
+      transform: "translate(" + w / 2 + " " + feet + ") scale(" + scale + ") translate(0 -1000)",
+    }));
+  }
+
   // [right, row]: the four corners inside a frame clockwise from top left,
   // then just above and just below its left edge. Row 0 is the top, 1 the
   // bottom, -1 above the frame, 2 below it.
@@ -258,7 +368,7 @@
 
   // Put a frame's label in the first corner where it clears the labels already
   // drawn and stays inside the photo, trying the label without its zoom names
-  // next; if nothing fits, where it overlaps least.
+  // next; if nothing fits, where it overlaps least (or nowhere on phones).
   function placeLabel(svg, item, placed, w, h) {
     var label = svgEl("text", { class: item.cls });
     svg.appendChild(label);
@@ -289,6 +399,9 @@
       if (!best || cost < best.cost) best = { cost: cost, text: text, x: label.getAttribute("x"), y: baseline, right: right, rect: rect };
       if (cost === 0) break;
     }
+    // On a phone a label that would cover another one is left out; tapping
+    // the frame or its table row still names it.
+    if (best.cost > 0 && window.matchMedia("(max-width: 600px)").matches) { label.remove(); return; }
     label.textContent = best.text;
     label.setAttribute("x", best.x);
     label.setAttribute("y", best.y);
@@ -299,40 +412,121 @@
   // Frames on the photo in viewBox units, smallest first, for tapping.
   var hits = [];
   var lastZoom = 1;
+  var SCENE_ASPECT = 1.5;
+  // A frame up to 3% bigger than the photo is drawn on its edge: the "10 mm"
+  // sample is 10.2 mm, and 2% is less than the line width on a phone.
+  var FIT = 1.03;
+
+  function inUnit(metres) { return state.unit === "ft" ? metres / FOOT : metres; }
+
+  // The height the person scene is aimed at: the middle of the body, or of
+  // the head and shoulders.
+  function aimHeight() {
+    return state.aim === "head" ? state.subject * (1 - data.head / 2) : state.subject / 2;
+  }
+
+  function widestOf(frames) {
+    return frames.reduce(function (m, fr) { return Math.max(m, fr.f[0], fr.f[1]); }, 0);
+  }
+
+  // The sample that shows the chosen frames best when the photo is too narrow
+  // for one of them: one that holds every frame with the least room to spare,
+  // or else the widest. Null when no sample beats the current photo.
+  function betterSample(cams, widest) {
+    var own = !state.scene && !ownBox.hidden;
+    var best = null;
+    data.samples.forEach(function (sample, i) {
+      if (!own && i === state.sample) return;
+      var w = 0;
+      cams.forEach(function (cam) {
+        state.focals.forEach(function (focal) {
+          var f = frameInPhoto(focal, cam.crop, sample.focal, sample.width / sample.height);
+          w = Math.max(w, f[0], f[1]);
+        });
+      });
+      if (w >= widest - 1e-9) return;
+      var fits = w <= FIT;
+      if (!best || (fits && (!best.fits || w > best.w)) || (!fits && !best.fits && w < best.w)) {
+        best = { index: i, w: w, fits: fits };
+      }
+    });
+    return best;
+  }
 
   function drawFrames() {
     var old = stage.querySelector("svg.frames");
     if (old) old.remove();
-    var aspect = photoAspect();
+    var aspect = state.scene ? SCENE_ASPECT : photoAspect();
     var w = 1000, h = 1000 / aspect;
     var svg = svgEl("svg", { class: "frames", viewBox: "0 0 " + w + " " + h, "aria-hidden": "true" });
-    var tooWide = [];
     var labels = [];
     var cams = cameras();
     var frames = [];
+    // Frames scale with the photo's focal length, so the scene starts at 1 mm
+    // and is then drawn at whatever focal length puts the widest frame at 85%
+    // of the stage. The scene follows the Vertical frame option; a photo was
+    // taken with the camera held the way it's shaped, so the frames are too.
+    var photoFocal = state.scene ? 1 : state.photoFocal;
+    var vertical = state.scene ? state.vertical : aspect < 1;
     cams.forEach(function (cam) {
       state.focals.forEach(function (focal) {
-        var f = frameInPhoto(focal, cam.crop, state.photoFocal, aspect);
-        if (f[0] > 1.0001 || f[1] > 1.0001) {
-          tooWide.push(mm(focal) + (cams.length > 1 ? " (" + cam.name + ")" : ""));
-          return;
-        }
+        var f = frameInPhoto(focal, cam.crop, photoFocal, aspect, vertical);
+        if (!state.scene) f = f.map(function (v) { return v > 1 && v <= FIT ? 1 : v; });
         frames.push({ cam: cam, focal: focal, f: f });
       });
     });
-    // Lens view: one frame, zoomed to fill the photo, the rest of the scene dimmed.
+    stage.style.setProperty("--aspect", aspect);
+    var allWidest = widestOf(frames);
+    if (state.scene) {
+      var sceneFocal = allWidest ? 0.85 / allWidest : 24;
+      frames.forEach(function (fr) { fr.f = [fr.f[0] * sceneFocal, fr.f[1] * sceneFocal]; });
+      allWidest = widestOf(frames);
+      drawScene(scene, {
+        focal: sceneFocal, aspect: aspect, distance: state.distance, height: state.subject,
+        eye: inUnit(data.eye), tile: inUnit(1), aim: aimHeight(), id: "scene",
+      });
+    }
+    photo.hidden = state.scene;
+    scene.toggleAttribute("hidden", !state.scene);
+    sceneActions.hidden = !state.scene;
+    var tooWide = frames.filter(function (fr) { return fr.f[0] > 1.0001 || fr.f[1] > 1.0001; });
+    // Lens view: one frame, zoomed to fill the stage, the rest of the scene dimmed.
     var lens = frames.filter(function (fr) { return key(fr.focal, fr.cam.slot) === state.selected; })[0];
     if (lens) frames = [lens];
-    // Otherwise zoom the photo in so the widest frame fills most of it: the
-    // scene outside every chosen lens only makes the frames small.
-    var widest = frames.reduce(function (m, fr) { return Math.max(m, fr.f[0], fr.f[1]); }, 0);
-    var zoom = widest ? Math.max(1, Math.min(lens ? 12 : 4, (lens ? 0.94 : 0.85) / widest)) : 1;
-    photo.style.transform = zoom > 1 ? "scale(" + zoom + ")" : "";
+    // Zoom the photo in so the widest frame fills most of it: the scene
+    // outside every chosen lens only makes the frames small. A frame wider
+    // than the photo zooms it out instead, so that frame still fits.
+    var widest = widestOf(frames);
+    var target = lens ? 0.94 : 0.85;
+    var zoom = 1;
+    if (widest > 1.0001) zoom = Math.max(0.05, target / widest);
+    else if (widest) zoom = Math.max(1, Math.min(lens ? (state.scene ? 200 : 12) : 4, target / widest));
+    var surface = state.scene ? scene : photo;
+    (state.scene ? photo : scene).style.transform = "";
+    surface.style.transform = zoom !== 1 ? "scale(" + zoom + ")" : "";
     // The photo eases to its new zoom (site.css); the frames fade in once it's there.
     if (Math.abs(zoom - lastZoom) > 0.001) svg.classList.add("settle");
     lastZoom = zoom;
     stage.classList.toggle("lens", !!lens);
     lensBack.hidden = !lens;
+    var placed = [];
+    // Zoomed out, the photo sits in the middle: hatch what it doesn't show.
+    if (zoom < 1) {
+      var px = ((1 - zoom) * w) / 2, py = ((1 - zoom) * h) / 2;
+      var defs = svgEl("defs", {});
+      var pattern = svgEl("pattern", {
+        id: "outside-hatch", width: 14, height: 14, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)",
+      });
+      pattern.appendChild(svgEl("rect", { width: 14, height: 14, class: "hatch-ground" }));
+      pattern.appendChild(svgEl("path", { d: "M0 0V14", class: "hatch-line" }));
+      defs.appendChild(pattern);
+      svg.appendChild(defs);
+      svg.appendChild(svgEl("path", {
+        class: "outside", "fill-rule": "evenodd", fill: "url(#outside-hatch)",
+        d: "M0 0H" + w + "V" + h + "H0Z M" + px + " " + py + "h" + zoom * w + "v" + zoom * h + "h" + -zoom * w + "Z",
+      }));
+      svg.appendChild(svgEl("rect", { x: px, y: py, width: zoom * w, height: zoom * h, class: "edge" }));
+    }
     hits = [];
     var drawn = {};
     frames.forEach(function (fr) {
@@ -358,9 +552,9 @@
     });
     hits.sort(function (a, b) { return a.w * a.h - b.w * b.h; });
     stage.appendChild(svg);
-    var placed = [];
+    if (zoom < 1) placeOutsideLabel(svg, placed, w, h, zoom, widest);
     labels.forEach(function (item) { placeLabel(svg, item, placed, w, h); });
-    notes.textContent = tooWide.map(function (f) { return fill(strings["tool.too_wide"], { focal: f }); }).join(". ");
+    drawNotes(cams, tooWide, allWidest);
     legend.hidden = cams.length < 2;
     legend.textContent = "";
     if (cams.length > 1) {
@@ -373,6 +567,44 @@
         legend.appendChild(item);
       });
     }
+  }
+
+  // "Not in this photo" in the hatched band above the photo, or below it,
+  // inside the widest frame; left out when neither band is tall enough (the
+  // note under the photo says it too).
+  function placeOutsideLabel(svg, placed, w, h, zoom, widest) {
+    var photoTop = ((1 - zoom) * h) / 2;
+    var frameTop = Math.max(0, ((1 - widest * zoom) * h) / 2);
+    var label = svgEl("text", { class: "outside-label", x: w / 2, "text-anchor": "middle" });
+    label.textContent = strings["tool.outside_photo"];
+    svg.appendChild(label);
+    var box = label.getBBox();
+    var band = photoTop - frameTop;
+    if (box.height + 8 > band || box.width + 16 > zoom * w) { label.remove(); return; }
+    label.setAttribute("y", frameTop + (band - box.height) / 2 - box.y);
+    box = label.getBBox();
+    placed.push({ x: box.x - 3, y: box.y - 2, width: box.width + 6, height: box.height + 4 });
+  }
+
+  function drawNotes(cams, tooWide, widest) {
+    notes.textContent = "";
+    sceneNote.hidden = !state.scene;
+    sceneNote.textContent = fill(strings["tool.scene_note"], { height: typed(state.subject), distance: typed(state.distance) });
+    if (!tooWide.length) return;
+    var names = [];
+    tooWide.forEach(function (fr) {
+      var name = mm(fr.focal) + (cams.length > 1 ? " (" + fr.cam.name + ")" : "");
+      if (names.indexOf(name) < 0) names.push(name);
+    });
+    notes.appendChild(document.createTextNode(fill(strings["tool.too_wide"], { focal: names.join(", ") }) + " "));
+    var better = betterSample(cams, widest);
+    if (!better) return;
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "link-button";
+    button.setAttribute("data-sample", better.index);
+    button.textContent = fill(strings["tool.use_sample"], { focal: mm(data.samples[better.index].focal) });
+    notes.appendChild(button);
   }
 
   function drawTable() {
@@ -411,13 +643,18 @@
     var parts = (state.selected || "").split("|");
     var cams = cameras();
     var cam = cams.filter(function (c) { return String(c.slot) === parts[1]; })[0];
-    var lens = cam && stage.classList.contains("lens");
-    viewerHint.textContent = lens
-      ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.name + ")" : "") })
-      : strings["tool.preview_hint"];
+    var lensView = cam && stage.classList.contains("lens");
+    var fitted = lensView && state.scene && state.fit && cam.slot === 0 && parseFloat(parts[0]) === fitFocal(state.fit);
+    viewerHint.textContent = fitted
+      ? fill(strings["tool.fit_" + state.fit + "_result"], {
+        distance: typed(state.distance), focal: mm(parseFloat(parts[0])), equiv: mm(parseFloat(parts[0]) * cam.crop),
+      })
+      : lensView
+        ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.name + ")" : "") })
+        : strings["tool.preview_hint"];
     // In lens view the visitor has just done what the app does live, so offer it there.
-    lensCta.hidden = !lens;
-    if (lens) lensCta.firstChild.textContent = fill(strings["tool.lens_cta"], { focal: mm(parseFloat(parts[0])) }) + " \u2192";
+    lensCta.hidden = !lensView;
+    if (lensView) lensCta.firstChild.textContent = fill(strings["tool.lens_cta"], { focal: mm(parseFloat(parts[0])) }) + " \u2192";
     distanceSummary.textContent = fill(strings["tool.distance_summary"], {
       distance: typed(state.distance), height: typed(state.subject),
     });
@@ -431,7 +668,8 @@
     query += "&f=" + state.focals.join(",");
     if (state.zooms.length) query += "&z=" + state.zooms.map(zoomName).join(",");
     query += "&d=" + state.distance + "&u=" + state.unit + "&h=" + state.subject + "&o=" + (state.vertical ? "v" : "h");
-    if (state.sample) query += "&s=" + state.sample;
+    if (state.scene) query += "&s=person" + (state.aim === "head" ? "&aim=head" : "");
+    else if (state.sample) query += "&s=" + state.sample;
     history.replaceState(null, "", location.pathname + query);
   }
 
@@ -485,6 +723,8 @@
     if (params.get("o") === "h") state.vertical = false;
     var s = parseInt(params.get("s"), 10);
     if (s > 0 && s < data.samples.length) state.sample = s;
+    if (params.get("s") === "person") state.scene = true;
+    if (params.get("aim") === "head") state.aim = "head";
   }
 
   function toggleFocal(focal) {
@@ -595,11 +835,47 @@
     var k = row.getAttribute("data-key");
     state.selected = state.selected === k ? null : k;
     render();
+    revealStage();
+  });
+
+  function revealStage() {
     var box = stage.getBoundingClientRect();
     if (box.top < 0 || box.bottom > window.innerHeight) {
       var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       stage.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
     }
+  }
+
+  // The focal length on the first camera that fits the whole person, or the
+  // head and shoulders, in 90% of the frame height at the subject distance.
+  function fitFocal(kind) {
+    var crop = cameras()[0].crop;
+    var subject = kind === "head" ? state.subject * data.head : state.subject;
+    var focal = Math.round(focalToFit(subject, state.distance, crop, state.vertical, data.fill));
+    return Math.min(1200, Math.max(4, focal));
+  }
+
+  sceneActions.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-fit]");
+    if (!button) return;
+    var kind = button.getAttribute("data-fit");
+    var focal = fitFocal(kind);
+    if (state.focals.indexOf(focal) < 0) state.focals.push(focal);
+    state.aim = state.fit = kind;
+    state.selected = key(focal, 0);
+    render();
+    revealStage();
+  });
+
+  notes.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-sample]");
+    if (!button) return;
+    var index = parseInt(button.getAttribute("data-sample"), 10);
+    form.querySelector('input[name="photo"][value="sample-' + index + '"]').checked = true;
+    ownBox.hidden = true;
+    state.scene = false;
+    showSample(index);
+    render();
   });
 
   // Tapping the photo picks the smallest frame around that spot; in lens view
@@ -655,13 +931,18 @@
     } else if (name === "photo") {
       var own = event.target.value === "own";
       ownBox.hidden = !own;
-      if (!own) {
+      state.scene = event.target.value === "person";
+      if (state.scene) {
+        render();
+      } else if (!own) {
         showSample(parseInt(event.target.value.split("-")[1], 10));
         render();
       } else if (state.ownUrl) {
         photo.src = state.ownUrl;
         state.photoFocal = parseFloat(photoFocalInput.value) || 26;
+        render();
       } else {
+        render();
         fileInput.click();
       }
     }
@@ -708,10 +989,17 @@
   bodySelects[0].value = state.bodies[0];
   bodySelects[1].value = state.bodies[1];
   syncDistanceInputs();
-  if (state.sample) {
+  if (state.scene) {
+    form.querySelector('input[name="photo"][value="person"]').checked = true;
+  } else if (state.sample) {
     form.querySelector('input[name="photo"][value="sample-' + state.sample + '"]').checked = true;
     showSample(state.sample);
   }
+  // The person tile and the icons on the Fit buttons are drawn like the scene.
+  drawScene($("person-thumb"), { focal: 36, aspect: SCENE_ASPECT, distance: 3, height: 1.8, eye: data.eye, tile: 1, aim: 0.9, id: "thumb" });
+  Array.prototype.forEach.call(form.querySelectorAll("svg.figure"), function (icon) {
+    icon.appendChild(svgEl("path", { d: FIGURE }));
+  });
   showAngles.checked = window.matchMedia("(min-width: 760px)").matches;
   syncAngles();
   form.hidden = false;
