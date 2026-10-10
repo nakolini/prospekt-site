@@ -30,7 +30,10 @@ def main():
     }
     request = urllib.request.Request(
         ENDPOINT, data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json; charset=utf-8"}, method="POST")
+        headers={"Content-Type": "application/json; charset=utf-8",
+                 # api.indexnow.org answers urllib's default "Python-urllib" agent with 403.
+                 "User-Agent": "prospekt-site-indexnow/1.0 (+" + build.BASE_URL + ")"},
+        method="POST")
     with urllib.request.urlopen(request, timeout=30) as response:
         print("IndexNow: HTTP %d for %d URLs" % (response.status, len(urls)))
 
