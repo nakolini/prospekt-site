@@ -8,6 +8,7 @@ so the output works under any host or sub-path; only canonical URLs,
 hreflang, the sitemap and robots.txt use BASE_URL.
 """
 
+import hashlib
 import html
 import json
 import math
@@ -36,7 +37,7 @@ EXPENNY_URL = "https://apps.apple.com/app/id6758223013"
 
 # Sample photos for the tool, each credited in the footer of pages that show it.
 SAMPLES = [
-    {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "thumb": "assets/sample-14mm-thumb.jpg", "width": 1920, "height": 1280,
+    {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "small_width": 1200, "thumb": "assets/sample-14mm-thumb.jpg", "width": 1920, "height": 1280,
      "focal": 14.0, "label_key": "tool.photo_sample", "credit_key": "footer.photo_credit"},
     # Canon EOS R5 at 10 mm, trimmed from 8192 to 8013 px wide on Commons: 10 x 8192 / 8013.
     {"src": "assets/sample-10mm.jpg", "small": None, "thumb": "assets/sample-10mm-thumb.jpg", "width": 1920, "height": 1280,
@@ -96,6 +97,19 @@ GENERIC_CROPS = [1.0, 1.5, 1.6, 2.0, 0.79]
 
 def e(text):
     return html.escape(str(text), quote=True)
+
+
+def asset_url(path):
+    """An asset's path with a hash of its content, so a deploy never pairs new pages with cached old CSS or JS."""
+    with open(os.path.join(ROOT, path), "rb") as f:
+        return "%s?v=%s" % (path, hashlib.sha256(f.read()).hexdigest()[:10])
+
+
+def srcset(sample, root):
+    """The 1200 px copy of a sample photo for phones, where it has one."""
+    if not sample["small"]:
+        return ""
+    return "%s%s %dw, %s%s %dw" % (root, sample["small"], sample["small_width"], root, sample["src"], sample["width"])
 
 
 def app_store_url(campaign):
@@ -336,7 +350,7 @@ def render(lang, page):
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1a1a1a">
 <meta name="apple-itunes-app" content="app-id={app_id}">
-<link rel="stylesheet" href="{root}assets/site.css">
+<link rel="stylesheet" href="{root}{css}">
 {extra_head}{jsonld}</head>
 <body>
 {header}
@@ -349,9 +363,9 @@ def render(lang, page):
 """.format(
         code=lang.code, dir=lang.dir, title=title, description=e(page.description),
         canonical=e(canonical), alternates=alternates, og_image=e(BASE_URL + "/" + SAMPLE["small"]),
-        app_id=APP_ID, root=root, extra_head=page.extra_head, jsonld=jsonld,
+        app_id=APP_ID, root=root, css=asset_url("assets/site.css"), extra_head=page.extra_head, jsonld=jsonld,
         header=header(lang, root, page.path), body=page.body.replace("{root}", root),
-        footer=footer(lang, root, credits), scripts=page.scripts.replace("{root}", root))
+        footer=footer(lang, root, credits), scripts=page.scripts.replace("{root}", root).replace("{js}", asset_url("assets/lens-compare.js")))
 
 
 def cta_box(lang, campaign):
@@ -503,7 +517,7 @@ def equivalence_table(lang):
     rows = "".join("<tr><th scope=\"row\">%s</th>%s</tr>" % (
         lang.mm(eq), "".join("<td>%s</td>" % lang.mm(lm.focal_for_equivalent(eq, c)) for c in GENERIC_CROPS[1:]))
         for eq in lm.CLASSIC_EQUIVALENTS)
-    return '<div class="scroll"><table><thead><tr><th scope="col">%s</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (
+    return '<div class="scroll"><table class="equiv"><thead><tr><th scope="col">%s</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (
         lang.t("tool.equiv_col_ff"), head, rows)
 
 
@@ -559,8 +573,10 @@ def portrait_formats_table(lang):
 
 
 def body_options(lang, bodies):
-    generic = "".join('<option value="generic-%s" data-crop="%s">%s (%s)</option>' % (
-        ("%g" % c).replace(".", "_"), c, e(lang.format_name(c)), lang.crop(c)) for c in GENERIC_CROPS)
+    # data-label names the camera inside parentheses ("24 mm (Full frame, 1x)") without nesting them.
+    generic = "".join('<option value="generic-%s" data-crop="%s" data-label="%s, %s">%s (%s)</option>' % (
+        ("%g" % c).replace(".", "_"), c, e(lang.format_name(c)), lang.crop(c), e(lang.format_name(c)), lang.crop(c))
+        for c in GENERIC_CROPS)
     groups = ['<optgroup label="%s">%s</optgroup>' % (lang.t("tool.generic_group"), generic)]
     brand = None
     for body in bodies:
@@ -575,11 +591,15 @@ def body_options(lang, bodies):
     return "".join(groups)
 
 
-TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share",
+TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share_own", "tool.share",
                 "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d",
                  "tool.table_covers", "tool.table_fit", "tool.preview_hint", "tool.lens_cta",
                  "tool.distance_summary", "tool.outside_photo", "tool.use_sample", "tool.scene_note",
-                 "tool.fit_body_result", "tool.fit_head_result"]
+                 "tool.fit_body_result", "tool.fit_head_result", "tool.focal_error", "tool.zoom_error",
+                 "tool.photo_error", "tool.photo_focal_missing"]
+
+# How wide the tool's photo is drawn: beside the controls from 960 px, full width below.
+PHOTO_SIZES = "(min-width: 960px) 800px, 100vw"
 
 ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70, 200), (100, 400), (150, 600)]
 
@@ -594,15 +614,18 @@ def tool_page(lang, bodies):
     })
     faq = [(lang.t("tool.faq_%d_q" % i), lang.t("tool.faq_%d_a" % i, **faq_values)) for i in range(1, 6)]
     default_focals = [24, 35, 50, 85]
-    chips = "".join('<button type="button" class="chip" data-focal="%d" aria-pressed="%s">%d</button>' % (
-        f, "true" if f in default_focals else "false", f) for f in lm.TABLE_FOCAL_LENGTHS)
-    zoom_chips = "".join('<button type="button" class="chip" data-zoom="%d-%d" aria-pressed="false">%d-%d</button>' % (
-        a, b, a, b) for a, b in ZOOM_PRESETS)
-    strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}", equiv="{equiv}")
+    # Chips show the bare number; screen readers hear "24 mm".
+    chips = "".join('<button type="button" class="chip" data-focal="%d" aria-pressed="%s" aria-label="%d mm">%d</button>' % (
+        f, "true" if f in default_focals else "false", f, f) for f in lm.TABLE_FOCAL_LENGTHS)
+    zoom_chips = "".join(
+        '<button type="button" class="chip" data-zoom="%d-%d" aria-pressed="false" aria-label="%d-%d mm">%d-%d</button>' % (
+            a, b, a, b, a, b) for a, b in ZOOM_PRESETS)
+    strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}", equiv="{equiv}",
+                           min="{min}", max="{max}")
                for k in TOOL_JS_KEYS}
     # The camera lists are filled in by the script, so the page's text doesn't open with 120 camera names.
     data = json.dumps({"strings": strings, "samples": SAMPLES, "lang": lang.code, "options": body_options(lang, bodies),
-                       "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl",
+                       "rtl": lang.dir == "rtl",
                        "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M, "eye": lm.EYE_LEVEL_M,
                        "head": lm.HEAD_SHOULDERS_M / lm.FULL_BODY_M},
                       ensure_ascii=False).replace("</", "<\\/")
@@ -625,14 +648,14 @@ def tool_page(lang, bodies):
 <form id="tool" class="tool" hidden>
 <div class="workspace">
 <div class="viewer" id="viewer">
-<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}
+<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" srcset="{srcset}" sizes="{sizes}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}
 <svg class="scene" id="scene" viewBox="0 0 1000 666.667" aria-hidden="true" hidden></svg>
 <button type="button" class="lens-back" id="lens-back" hidden>{lens_back}</button></div>
 <p class="legend" id="legend" hidden></p>
 <div class="scene-actions" id="scene-actions" hidden><button type="button" data-fit="body"><svg class="figure" viewBox="-150 -10 300 1020" aria-hidden="true"></svg>{fit_body}</button><button type="button" data-fit="head"><svg class="figure" viewBox="-150 -10 300 290" aria-hidden="true"></svg>{fit_head}</button></div>
-<p class="viewer-hint" id="viewer-hint">{preview_hint}</p>
+<p class="viewer-hint" id="viewer-hint" aria-live="polite">{preview_hint}</p>
 <p class="lens-cta" id="lens-cta" hidden><a href="{lens_url}"></a></p>
-<p class="notes" id="notes"></p>
+<p class="notes" id="notes" aria-live="polite"></p>
 </div>
 <div class="panel">
 <div class="group">
@@ -643,16 +666,20 @@ def tool_page(lang, bodies):
 <div class="group">
 <p class="group-label" id="focals-label">{focals_label}</p>
 <div class="chips scroller" id="chips" role="group" aria-labelledby="focals-label">{chips}<button type="button" class="chip more" id="more-focal" aria-controls="custom-row" aria-expanded="false" aria-label="{custom_label}">+</button></div>
-<div class="inline-row" id="custom-row" hidden><label for="custom">{custom_label}</label> <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric"> <button type="button" id="add">{add}</button></div>
+<div class="inline-row" id="custom-row" hidden><label for="custom">{custom_label}</label> <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-describedby="custom-error"> <button type="button" id="add">{add}</button>
+<span class="field-error" id="custom-error" aria-live="polite"></span></div>
 <p class="group-label" id="zooms-label">{zooms_label}</p>
 <div class="chips scroller" id="zooms" role="group" aria-labelledby="zooms-label">{zoom_chips}<button type="button" class="chip more" id="more-zoom" aria-controls="zoom-row" aria-expanded="false" aria-label="{zoom_custom_label}">+</button></div>
-<div class="inline-row" id="zoom-row" hidden><span id="zoom-custom-label">{zoom_custom_label}</span> <span class="range"><input id="zoom-from" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_from}"> <span aria-hidden="true">-</span> <input id="zoom-to" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_to}"></span> <button type="button" id="add-zoom" aria-describedby="zoom-custom-label">{add}</button></div>
+<div class="inline-row" id="zoom-row" hidden><span id="zoom-custom-label">{zoom_custom_label}</span> <span class="range"><input id="zoom-from" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_from}" aria-describedby="zoom-error"> <span aria-hidden="true">-</span> <input id="zoom-to" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_to}" aria-describedby="zoom-error"></span> <button type="button" id="add-zoom" aria-describedby="zoom-custom-label">{add}</button>
+<span class="field-error" id="zoom-error" aria-live="polite"></span></div>
 </div>
 <div class="group">
 <p class="group-label" id="photo-label">{photo_label}</p>
 <div class="tiles" role="radiogroup" aria-labelledby="photo-label">{samples}<label class="tile own"><input type="radio" name="photo" value="own"><span class="tile-plus" aria-hidden="true">+</span><span class="tile-text">{photo_own}</span></label></div>
-<div id="own" hidden><input id="file" type="file" accept="image/*">
-<label class="field">{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26"></label>
+<p class="field-error" id="photo-error" role="alert"></p>
+<div id="own" hidden><input id="file" type="file" accept="image/*" aria-label="{photo_own}">
+<label class="field">{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26" aria-describedby="photo-focal-note"></label>
+<p class="field-note" id="photo-focal-note" aria-live="polite"></p>
 <p class="muted">{photo_focal_hint} {photo_private}</p></div>
 <p class="muted" id="scene-note" hidden></p>
 </div>
@@ -660,7 +687,7 @@ def tool_page(lang, bodies):
 <summary><span class="group-label">{distance_legend}</span> <span class="summary-value" id="distance-summary"></span></summary>
 <div class="field"><label for="distance">{distance_label}</label> <span class="with-unit"><input id="distance" type="number" min="0.1" max="100000" step="0.1" value="3" inputmode="decimal"> <span class="unit">m</span></span></div>
 <div class="field"><label for="subject">{subject_label}</label> <span class="with-unit"><input id="subject" type="number" min="0.01" max="100000" step="0.1" value="1.8" inputmode="decimal"> <span class="unit">m</span></span></div>
-<div class="segmented" role="radiogroup" aria-label="{subject_label}"><label><input type="radio" name="orient" value="v" checked> {vertical}</label><label><input type="radio" name="orient" value="h"> {horizontal}</label></div>
+<div class="segmented" role="radiogroup" aria-label="{orient_label}"><label><input type="radio" name="orient" value="v" checked> {vertical}</label><label><input type="radio" name="orient" value="h"> {horizontal}</label></div>
 <div class="segmented" role="radiogroup" aria-label="{unit_label}"><label><input type="radio" name="unit" value="m" checked> {unit_m}</label><label><input type="radio" name="unit" value="ft"> {unit_ft}</label></div>
 <p class="muted">{subject_hint}</p>
 </details>
@@ -700,11 +727,13 @@ def tool_page(lang, bodies):
         distance_label=lang.t("tool.distance_label"), unit_label=lang.t("tool.unit_label"),
         unit_m=lang.t("tool.unit_m"), unit_ft=lang.t("tool.unit_ft"), subject_label=lang.t("tool.subject_label"),
         vertical=lang.t("tool.subject_vertical"), horizontal=lang.t("tool.subject_horizontal"),
+        orient_label=lang.t("tool.orient_label"),
         subject_hint=lang.t("tool.subject_hint"), photo_label=lang.t("tool.photo_label"),
         samples=samples, photo_own=lang.t("tool.photo_own"),
         photo_focal_label=lang.t("tool.photo_focal_label"), photo_focal_hint=lang.t("tool.photo_focal_hint"),
         photo_private=lang.t("tool.photo_private"), src=SAMPLE["src"], small=SAMPLE["small"],
         w=SAMPLE["width"], h=SAMPLE["height"], frames=photo_frames_svg(default_focals, 1.0),
+        srcset=srcset(SAMPLE, "{root}"), sizes=PHOTO_SIZES,
         table=angle_table(lang, default_focals, 1.0), preview_hint=lang.t("tool.preview_hint"),
         distance_note=lang.t("tool.distance_note"), soft=lang.t("tool.soft_note"), share=lang.t("tool.share"),
         static_caption=lang.t("tool.static_caption"), equiv_title=lang.t("tool.equiv_title"),
@@ -734,7 +763,9 @@ def tool_page(lang, bodies):
     crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.tool"), "lens-compare/")])
     return Page("lens-compare/", "tool.title", lang.raw("tool.description"), body,
                 jsonld=[app, faq_jsonld(faq), crumbs],
-                scripts='<script src="{root}assets/lens-compare.js" defer></script>\n')
+                # The "js" class hides the no-script figure before it starts loading its photo.
+                extra_head='<script>document.documentElement.className += " js";</script>\n',
+                scripts='<script src="{root}{js}" defer></script>\n')
 
 
 def cameras_page(lang, bodies):

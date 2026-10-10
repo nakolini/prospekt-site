@@ -26,6 +26,7 @@ Python 3.9+ standard library only. No dependencies.
 ## Where things live
 
 - `gen/build.py`: the generator and every page template. `BASE_URL` (canonical host) and `PROVIDER_TOKEN` (App Store campaign attribution) are at the top.
+- Pages link `site.css` and `lens-compare.js` with `?v=` and a hash of their content (`asset_url`), so a deploy never pairs new HTML with a cached old file. Rebuild after editing either.
 - `gen/lensmath.py`: field-of-view math. `assets/lens-compare.js` has the same formulas for the tool; `gen/tests/test_js_parity.py` keeps them identical.
 - `data/bodies.json`: generated from the app's `CameraBody.curated`; never edit by hand. `data/mounts.json`: lens mount per body, edited by hand. The tests fail if a body has no mount entry.
 - `i18n/<lang>.json`: all page copy. `en.json` is the source; every other file must have the same keys and `{placeholders}` (tested).

@@ -110,6 +110,32 @@ class SiteTest(unittest.TestCase):
         self.assertIn('id="body2"', text)
         self.assertIn('data-zoom="24-70"', text)
 
+    def test_assets_are_versioned_by_content(self):
+        # A deploy changes the ?v= of a changed file, so cached CSS or JS never meets new pages.
+        css = build.asset_url("assets/site.css")
+        js = build.asset_url("assets/lens-compare.js")
+        self.assertRegex(css, r"^assets/site\.css\?v=[0-9a-f]{10}$")
+        for path in pages():
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(page=os.path.relpath(path, ROOT)):
+                self.assertIn(css + '"', text)
+                self.assertNotIn('site.css"', text)
+                self.assertEqual("lens-compare/" in path.replace(os.sep, "/"), js + '"' in text)
+
+    def test_tool_page_is_light_and_labelled(self):
+        with open(os.path.join(ROOT, "lens-compare", "index.html"), encoding="utf-8") as f:
+            text = f.read()
+        # Phones get the 1200 px photo, and the no-script figure is hidden before it loads.
+        self.assertIn('srcset="../assets/sample-14mm-1200.jpg 1200w, ../assets/sample-14mm.jpg 1920w"', text)
+        self.assertIn('document.documentElement.className += " js"', text)
+        self.assertIn('data-focal="24" aria-pressed="true" aria-label="24 mm">24</button>', text)
+        self.assertIn('aria-label="24-70 mm">24-70</button>', text)
+        self.assertIn('role="radiogroup" aria-label="Frame orientation"', text)
+        # The camera list is in the tool's JSON, so its quotes are escaped.
+        self.assertIn('data-label=\\"Full frame, 1x\\"', text)
+        self.assertIn('<table class="equiv">', text)
+
     def test_price_is_in_the_html(self):
         with open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
             self.assertIn("$3.99", f.read())

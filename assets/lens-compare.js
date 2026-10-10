@@ -144,14 +144,23 @@
   var scene = $("scene");
   var sceneActions = $("scene-actions");
   var sceneNote = $("scene-note");
+  var customError = $("custom-error");
+  var zoomError = $("zoom-error");
+  var photoError = $("photo-error");
+  var focalNote = $("photo-focal-note");
 
   var state = {
     bodies: ["generic-1", ""],
     focals: [24, 35, 50, 85],
+    // The focal lengths picked on their own, which removing a zoom keeps.
+    picked: [24, 35, 50, 85],
     zooms: [],
     distance: 3,
     unit: "m",
     subject: 1.8,
+    // Distance and height in metres as well, so switching units back and
+    // forth returns the same numbers; distance and subject are in state.unit.
+    metres: { distance: 3, subject: 1.8 },
     vertical: true,
     sample: 0,
     photoFocal: data.samples[0].focal,
@@ -164,24 +173,31 @@
     fit: null,
   };
 
-  function num(value, decimals) {
-    var text = value.toFixed(decimals);
-    return data.comma ? text.replace(".", ",") : text;
+  // Numbers the page's way ("1,200.5", "1.200,5", "1 200,5"), always in Latin digits like the rest of the site.
+  var formats = {};
+  function num(value, decimals, upTo) {
+    var id = decimals + "-" + upTo;
+    formats[id] = formats[id] || new Intl.NumberFormat(data.lang + "-u-nu-latn", {
+      minimumFractionDigits: decimals, maximumFractionDigits: upTo === undefined ? decimals : upTo,
+    });
+    return formats[id].format(value);
   }
   // Keeps "24 mm" from turning into "mm 24" on right-to-left pages.
   function isolate(text) { return data.rtl ? "⁦" + text + "⁩" : text; }
-  function mm(value) { return isolate(Math.round(value) + " mm"); }
+  function mm(value) { return isolate(num(Math.round(value), 0) + "\u00a0mm"); }
   function deg(value) { return isolate(num(value, 1) + "°"); }
   // Lengths: one decimal, two below 1, none from 100 up.
-  function len(value) { return num(value, value < 1 ? 2 : value < 100 ? 1 : 0); }
+  function decimalsFor(value) { return value < 1 ? 2 : value < 100 ? 1 : 0; }
+  function len(value) { return num(value, decimalsFor(value)); }
   // Lengths keep a no-break space before the unit so "3.1 m" never wraps.
   function length(value) { return isolate(len(value) + "\u00a0" + state.unit); }
   // A value the visitor typed, as typed: "3 m", "1.8 m".
-  function typed(value) {
-    var text = String(round(value, 2));
-    return isolate((data.comma ? text.replace(".", ",") : text) + "\u00a0" + state.unit);
+  function typed(value) { return isolate(num(value, 0, 2) + "\u00a0" + state.unit); }
+  // Width and height share the precision of the larger: "1.4 × 1.0 m", not "1.4 × 0.96 m".
+  function size(pair) {
+    var d = decimalsFor(Math.max(pair[0], pair[1]));
+    return isolate(num(pair[0], d) + "\u00a0\u00d7 " + num(pair[1], d) + "\u00a0" + state.unit);
   }
-  function size(pair) { return isolate(len(pair[0]) + "\u00a0\u00d7 " + len(pair[1]) + "\u00a0" + state.unit); }
   function fill(template, values) {
     return template.replace(/\{(\w+)\}/g, function (all, key) { return key in values ? values[key] : all; });
   }
@@ -196,11 +212,18 @@
     return bodySelects.map(function (select, slot) {
       var option = select.options[select.selectedIndex];
       if (!option || !option.value) return null;
-      return { slot: slot, crop: parseFloat(option.getAttribute("data-crop")), name: option.textContent };
+      // label goes inside parentheses after a focal length: "24 mm (Full frame, 1x)".
+      return {
+        slot: slot, crop: parseFloat(option.getAttribute("data-crop")), name: option.textContent,
+        label: option.getAttribute("data-label") || option.textContent,
+      };
     }).filter(Boolean);
   }
 
+  // A sample's own size: with srcset the browser reports a rounded one (800 x 533).
   function photoAspect() {
+    var sample = data.samples[state.sample];
+    if (!showingOwn()) return sample.width / sample.height;
     return photo.naturalWidth && photo.naturalHeight ? photo.naturalWidth / photo.naturalHeight : 1.5;
   }
 
@@ -211,7 +234,7 @@
   }
   function focalLabel(focal) {
     var zooms = zoomsEndingAt(focal);
-    return focal + " mm" + (zooms.length ? " (" + zooms.join(", ") + ")" : "");
+    return num(focal, 0) + " mm" + (zooms.length ? " (" + zooms.join(", ") + ")" : "");
   }
 
   function insertSorted(box, chip, value, attr) {
@@ -221,23 +244,24 @@
     box.insertBefore(chip, later || box.querySelector(".more"));
   }
 
-  function makeChip(attr, value, text) {
+  function makeChip(attr, value) {
     var chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip";
     chip.setAttribute(attr, value);
-    chip.textContent = text;
+    chip.setAttribute("aria-label", value + " mm");
+    chip.textContent = value;
     return chip;
   }
 
   function ensureChip(focal) {
     if (chipsBox.querySelector('[data-focal="' + focal + '"]')) return;
-    insertSorted(chipsBox, makeChip("data-focal", String(focal), String(focal)), focal, "data-focal");
+    insertSorted(chipsBox, makeChip("data-focal", String(focal)), focal, "data-focal");
   }
 
   function ensureZoomChip(zoom) {
     if (zoomsBox.querySelector('[data-zoom="' + zoomName(zoom) + '"]')) return;
-    insertSorted(zoomsBox, makeChip("data-zoom", zoomName(zoom), zoomName(zoom)), zoom[0], "data-zoom");
+    insertSorted(zoomsBox, makeChip("data-zoom", zoomName(zoom)), zoom[0], "data-zoom");
   }
 
   function syncChips() {
@@ -418,6 +442,7 @@
   var FIT = 1.03;
 
   function inUnit(metres) { return state.unit === "ft" ? metres / FOOT : metres; }
+  function toMetres(value) { return state.unit === "ft" ? value * FOOT : value; }
 
   // The height the person scene is aimed at: the middle of the body, or of
   // the head and shoulders.
@@ -433,7 +458,7 @@
   // for one of them: one that holds every frame with the least room to spare,
   // or else the widest. Null when no sample beats the current photo.
   function betterSample(cams, widest) {
-    var own = !state.scene && !ownBox.hidden;
+    var own = showingOwn();
     var best = null;
     data.samples.forEach(function (sample, i) {
       if (!own && i === state.sample) return;
@@ -587,17 +612,23 @@
   }
 
   function drawNotes(cams, tooWide, widest) {
-    notes.textContent = "";
     sceneNote.hidden = !state.scene;
     sceneNote.textContent = fill(strings["tool.scene_note"], { height: typed(state.subject), distance: typed(state.distance) });
-    if (!tooWide.length) return;
-    var names = [];
-    tooWide.forEach(function (fr) {
-      var name = mm(fr.focal) + (cams.length > 1 ? " (" + fr.cam.name + ")" : "");
-      if (names.indexOf(name) < 0) names.push(name);
-    });
-    notes.appendChild(document.createTextNode(fill(strings["tool.too_wide"], { focal: names.join(", ") }) + " "));
-    var better = betterSample(cams, widest);
+    var text = "", better = null;
+    if (tooWide.length) {
+      var names = [];
+      tooWide.forEach(function (fr) {
+        var name = mm(fr.focal) + (cams.length > 1 ? " (" + fr.cam.label + ")" : "");
+        if (names.indexOf(name) < 0) names.push(name);
+      });
+      text = fill(strings["tool.too_wide"], { focal: names.join(", ") });
+      better = betterSample(cams, widest);
+    }
+    // The notes are a live region: rewrite them only when they say something new.
+    var said = text + "|" + (better ? better.index : "");
+    if (notes.getAttribute("data-said") === said) return;
+    notes.setAttribute("data-said", said);
+    notes.textContent = text ? text + " " : "";
     if (!better) return;
     var button = document.createElement("button");
     button.type = "button";
@@ -608,6 +639,8 @@
   }
 
   function drawTable() {
+    // Rebuilding the table drops the focus from a row's button; it goes back after.
+    var focused = results.contains(document.activeElement) ? document.activeElement.getAttribute("data-key") : null;
     var cams = cameras();
     var heads = [
       strings["tool.table_focal"],
@@ -629,14 +662,16 @@
         var zooms = zoomsEndingAt(focal);
         var fit = distanceToFit(state.subject, focal, cam.crop, state.vertical, data.fill);
         return '<tr class="clickable' + (k === state.selected ? " selected" : "") + '" data-key="' + k +
-          '" tabindex="0"><th scope="row">' + mm(focal) +
-          (zooms.length ? ' <span class="zoom-tag">' + escapeHtml(zooms.join(", ")) + "</span>" : "") +
-          "</th><td>" + size(coverage(focal, cam.crop, state.distance)) + "</td><td>" + length(fit) +
+          '"><th scope="row"><button type="button" class="row-pick" data-key="' + k + '" aria-pressed="' + (k === state.selected) +
+          '">' + mm(focal) + (zooms.length ? ' <span class="zoom-tag">' + escapeHtml(zooms.join(", ")) + "</span>" : "") +
+          "</button></th><td>" + size(coverage(focal, cam.crop, state.distance)) + "</td><td>" + length(fit) +
           "</td><td>" + mm(focal * cam.crop) + '</td><td class="angle">' + deg(a[0]) + '</td><td class="angle">' + deg(a[1]) +
           '</td><td class="angle">' + deg(a[2]) + "</td></tr>";
       }).join("") + "</tbody>";
     }).join("");
     results.innerHTML = '<div class="scroll"><table class="angles"><thead><tr>' + head + "</tr></thead>" + body + "</table></div>";
+    var again = focused && results.querySelector('button[data-key="' + focused + '"]');
+    if (again) again.focus({ preventScroll: true });
   }
 
   function drawText() {
@@ -645,13 +680,15 @@
     var cam = cams.filter(function (c) { return String(c.slot) === parts[1]; })[0];
     var lensView = cam && stage.classList.contains("lens");
     var fitted = lensView && state.scene && state.fit && cam.slot === 0 && parseFloat(parts[0]) === fitFocal(state.fit);
-    viewerHint.textContent = fitted
+    var hint = fitted
       ? fill(strings["tool.fit_" + state.fit + "_result"], {
         distance: typed(state.distance), focal: mm(parseFloat(parts[0])), equiv: mm(parseFloat(parts[0]) * cam.crop),
       })
       : lensView
-        ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.name + ")" : "") })
+        ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.label + ")" : "") })
         : strings["tool.preview_hint"];
+    // A live region too: screen readers hear what a lens frames, once.
+    if (viewerHint.textContent !== hint) viewerHint.textContent = hint;
     // In lens view the visitor has just done what the app does live, so offer it there.
     lensCta.hidden = !lensView;
     if (lensView) lensCta.firstChild.textContent = fill(strings["tool.lens_cta"], { focal: mm(parseFloat(parts[0])) }) + " \u2192";
@@ -660,6 +697,8 @@
     });
     if (state.bodies[1]) body2Box.hidden = false;
     addBody2.hidden = !body2Box.hidden;
+    // The second camera can't be the first one again.
+    Array.prototype.forEach.call(bodySelects[1].options, function (o) { o.disabled = !!o.value && o.value === state.bodies[0]; });
   }
 
   function writeUrl() {
@@ -668,8 +707,9 @@
     query += "&f=" + state.focals.join(",");
     if (state.zooms.length) query += "&z=" + state.zooms.map(zoomName).join(",");
     query += "&d=" + state.distance + "&u=" + state.unit + "&h=" + state.subject + "&o=" + (state.vertical ? "v" : "h");
+    // The visitor's own photo stays in the browser, so the link opens on the first sample.
     if (state.scene) query += "&s=person" + (state.aim === "head" ? "&aim=head" : "");
-    else if (state.sample) query += "&s=" + state.sample;
+    else if (state.sample && !showingOwn()) query += "&s=" + state.sample;
     history.replaceState(null, "", location.pathname + query);
   }
 
@@ -687,7 +727,9 @@
   }
 
   function validFocal(v) { return v >= 4 && v <= 1200; }
-  function validLength(v) { return v > 0 && v <= 100000; }
+  function validLength(v) { return v >= 0.01 && v <= 100000; }
+  // A length converted to another unit, at the precision the page shows.
+  function shown(value) { return Math.max(0.01, round(value, value < 1 ? 2 : 1)); }
   function round(value, decimals) { var p = Math.pow(10, decimals); return Math.round(value * p) / p; }
 
   function addZoom(zoom) {
@@ -704,15 +746,20 @@
     var body = params.get("body");
     if (body && hasOption(bodySelects[0], body)) state.bodies[0] = body;
     var body2 = params.get("body2");
-    if (body2 && hasOption(bodySelects[1], body2)) state.bodies[1] = body2;
-    var f = (params.get("f") || "").split(",").map(parseFloat).filter(validFocal);
-    if (f.length) state.focals = f.filter(function (v, i) { return f.indexOf(v) === i; }).slice(0, 16);
+    if (body2 && body2 !== state.bodies[0] && hasOption(bodySelects[1], body2)) state.bodies[1] = body2;
+    // Whole millimetres, like the focal lengths typed in; the limits only stop absurd links.
+    function focal(text) { return Math.round(parseFloat(text)); }
+    var f = (params.get("f") || "").split(",").map(focal).filter(validFocal);
+    if (f.length) state.focals = f.filter(function (v, i) { return f.indexOf(v) === i; }).slice(0, 60);
     (params.get("z") || "").split(",").forEach(function (text) {
-      var ends = text.split("-").map(parseFloat);
-      if (ends.length === 2 && validFocal(ends[0]) && validFocal(ends[1]) && ends[0] < ends[1] && state.zooms.length < 6) {
+      var ends = text.split("-").map(focal);
+      if (ends.length === 2 && validFocal(ends[0]) && validFocal(ends[1]) && ends[0] < ends[1] && state.zooms.length < 30) {
         addZoom(ends);
       }
     });
+    // A link doesn't say which focal lengths were picked on their own: take
+    // the ones that don't end a zoom.
+    state.picked = state.focals.filter(function (v) { return !zoomsEndingAt(v).length; });
     var unit = params.get("u");
     // Feet for visitors whose browser says US English, unless the link says otherwise.
     if (unit === "ft" || (!unit && /^en-(US|LR|MM)$/i.test(navigator.language || ""))) state.unit = "ft";
@@ -720,6 +767,7 @@
     state.distance = validLength(d) ? d : state.unit === "ft" ? 10 : 3;
     var h = parseFloat(params.get("h"));
     state.subject = validLength(h) ? h : state.unit === "ft" ? 6 : 1.8;
+    state.metres = { distance: toMetres(state.distance), subject: toMetres(state.subject) };
     if (params.get("o") === "h") state.vertical = false;
     var s = parseInt(params.get("s"), 10);
     if (s > 0 && s < data.samples.length) state.sample = s;
@@ -727,14 +775,20 @@
     if (params.get("aim") === "head") state.aim = "head";
   }
 
+  function pick(focal) {
+    if (state.focals.indexOf(focal) < 0) state.focals.push(focal);
+    if (state.picked.indexOf(focal) < 0) state.picked.push(focal);
+  }
+
   function toggleFocal(focal) {
     var i = state.focals.indexOf(focal);
     if (i >= 0) {
       state.focals.splice(i, 1);
+      state.picked = state.picked.filter(function (v) { return v !== focal; });
       // A zoom missing one of its ends is no longer that zoom.
       state.zooms = state.zooms.filter(function (z) { return z[0] !== focal && z[1] !== focal; });
     } else {
-      state.focals.push(focal);
+      pick(focal);
     }
     render();
   }
@@ -743,9 +797,11 @@
     var existing = state.zooms.filter(function (z) { return zoomName(z) === name; })[0];
     if (existing) {
       state.zooms = state.zooms.filter(function (z) { return z !== existing; });
-      // Drop the ends unless another chosen zoom still uses them.
+      // Drop the ends unless another chosen zoom still uses them or they were picked on their own.
       existing.forEach(function (f) {
-        if (!zoomsEndingAt(f).length) state.focals = state.focals.filter(function (v) { return v !== f; });
+        if (!zoomsEndingAt(f).length && state.picked.indexOf(f) < 0) {
+          state.focals = state.focals.filter(function (v) { return v !== f; });
+        }
       });
     } else {
       addZoom(name.split("-").map(parseFloat));
@@ -780,16 +836,29 @@
     bodySelects[1].focus();
   });
 
+  // Marks the fields that are wrong and says why beside them; typing clears it.
+  function complain(box, message, inputs) {
+    box.textContent = message ? fill(message, { min: num(4, 0), max: mm(1200) }) : "";
+    inputs.forEach(function (input) {
+      if (message) input.setAttribute("aria-invalid", "true"); else input.removeAttribute("aria-invalid");
+    });
+  }
+  customInput.addEventListener("input", function () { complain(customError, null, [customInput]); });
+  [zoomFrom, zoomTo].forEach(function (input) {
+    input.addEventListener("input", function () { complain(zoomError, null, [zoomFrom, zoomTo]); });
+  });
+
   $("add").addEventListener("click", function () {
     var focal = Math.round(parseFloat(customInput.value));
-    if (!validFocal(focal)) return;
-    if (state.focals.indexOf(focal) < 0) state.focals.push(focal);
+    if (!validFocal(focal)) { complain(customError, strings["tool.focal_error"], [customInput]); return; }
+    pick(focal);
     customInput.value = "";
     render();
   });
   $("add-zoom").addEventListener("click", function () {
     var a = Math.round(parseFloat(zoomFrom.value)), b = Math.round(parseFloat(zoomTo.value));
-    if (!validFocal(a) || !validFocal(b) || a === b) return;
+    var bad = [zoomFrom, zoomTo].filter(function (input, i) { return !validFocal([a, b][i]); });
+    if (bad.length || a === b) { complain(zoomError, strings["tool.zoom_error"], bad.length ? bad : [zoomFrom, zoomTo]); return; }
     addZoom([Math.min(a, b), Math.max(a, b)]);
     zoomFrom.value = zoomTo.value = "";
     render();
@@ -806,19 +875,27 @@
   bodySelects.forEach(function (select, slot) {
     select.addEventListener("change", function () {
       state.bodies[slot] = select.value;
-      // Choosing "None" puts the second camera away again.
-      if (slot === 1 && !select.value) { body2Box.hidden = true; addBody2.setAttribute("aria-expanded", "false"); }
+      // The first camera taking the second one's place leaves just one.
+      if (slot === 0 && state.bodies[1] === select.value) state.bodies[1] = bodySelects[1].value = "";
+      // Choosing "None" puts the second camera away again, and the focus on
+      // the button that brings it back.
+      var away = slot === 1 && !select.value;
+      if (away) { body2Box.hidden = true; addBody2.setAttribute("aria-expanded", "false"); }
       render();
+      if (away) addBody2.focus();
     });
   });
 
-  distanceInput.addEventListener("input", function () {
-    var value = parseFloat(distanceInput.value);
-    if (validLength(value)) { state.distance = value; render(); }
-  });
-  subjectInput.addEventListener("input", function () {
-    var value = parseFloat(subjectInput.value);
-    if (validLength(value)) { state.subject = value; render(); }
+  [[distanceInput, "distance"], [subjectInput, "subject"]].forEach(function (pair) {
+    var input = pair[0], name = pair[1];
+    input.addEventListener("input", function () {
+      var value = parseFloat(input.value);
+      if (validLength(value)) { state[name] = value; state.metres[name] = toMetres(value); render(); }
+    });
+    // Left empty or out of range, the field shows the value in use again.
+    input.addEventListener("change", function () {
+      if (!validLength(parseFloat(input.value))) input.value = state[name];
+    });
   });
 
   function syncDistanceInputs() {
@@ -829,6 +906,7 @@
     Array.prototype.forEach.call(form.querySelectorAll(".unit"), function (el) { el.textContent = state.unit; });
   }
 
+  // A click anywhere on a row opens its lens view; the row's button does it from the keyboard.
   results.addEventListener("click", function (event) {
     var row = event.target.closest("tr[data-key]");
     if (!row) return;
@@ -860,7 +938,7 @@
     if (!button) return;
     var kind = button.getAttribute("data-fit");
     var focal = fitFocal(kind);
-    if (state.focals.indexOf(focal) < 0) state.focals.push(focal);
+    pick(focal);
     state.aim = state.fit = kind;
     state.selected = key(focal, 0);
     render();
@@ -870,12 +948,12 @@
   notes.addEventListener("click", function (event) {
     var button = event.target.closest("[data-sample]");
     if (!button) return;
-    var index = parseInt(button.getAttribute("data-sample"), 10);
-    form.querySelector('input[name="photo"][value="sample-' + index + '"]').checked = true;
-    ownBox.hidden = true;
-    state.scene = false;
-    showSample(index);
-    render();
+    var value = "sample-" + button.getAttribute("data-sample");
+    var tile = form.querySelector('input[name="photo"][value="' + value + '"]');
+    tile.checked = true;
+    choosePhoto(value);
+    // The button is gone once the photo fits; the focus goes to that photo's tile.
+    tile.focus({ preventScroll: true });
   });
 
   // Tapping the photo picks the smallest frame around that spot; in lens view
@@ -892,96 +970,168 @@
     var hit = hits.filter(function (r) { return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h; })[0];
     if (hit) { state.selected = hit.key; render(); }
   });
-  lensBack.addEventListener("click", function () { state.selected = null; render(); });
+  lensBack.addEventListener("click", function () {
+    var k = state.selected, focused = document.activeElement === lensBack;
+    state.selected = null;
+    render();
+    // The button hides with the lens view; the focus goes to that lens's row.
+    var row = results.querySelector('button[data-key="' + k + '"]');
+    if (focused && row) row.focus({ preventScroll: true });
+  });
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && state.selected !== null) { state.selected = null; render(); }
   });
 
   function syncAngles() { resultsBox.classList.toggle("with-angles", showAngles.checked); }
   showAngles.addEventListener("change", syncAngles);
-  results.addEventListener("keydown", function (event) {
-    if ((event.key === "Enter" || event.key === " ") && event.target.matches("tr[data-key]")) {
-      event.preventDefault();
-      event.target.click();
-    }
-  });
 
   function showSample(index) {
+    var sample = data.samples[index], root = photo.getAttribute("data-root");
     state.sample = index;
-    state.photoFocal = data.samples[index].focal;
-    photo.src = photo.getAttribute("data-root") + data.samples[index].src;
-    photo.width = data.samples[index].width;
-    photo.height = data.samples[index].height;
+    state.photoFocal = sample.focal;
+    // Phones get the 1200 px copy where there is one.
+    if (sample.small) {
+      photo.srcset = root + sample.small + " " + sample.small_width + "w, " + root + sample.src + " " + sample.width + "w";
+    } else {
+      photo.removeAttribute("srcset");
+    }
+    photo.src = root + sample.src;
+    photo.width = sample.width;
+    photo.height = sample.height;
+  }
+
+  function showOwn(url) {
+    var focal = parseFloat(photoFocalInput.value);
+    state.photoFocal = validFocal(focal) ? focal : 26;
+    photo.removeAttribute("srcset");
+    photo.src = url;
+  }
+
+  // The visitor's own photo is on screen, not just its tile chosen.
+  function showingOwn() { return !state.scene && !!state.ownUrl && photo.src === state.ownUrl; }
+
+  // The tile chosen before "Use my own photo", to go back to when the file
+  // picker closes without a photo or the browser can't open the one picked.
+  var lastChoice = "sample-0";
+  // A picked photo until it opens: its URL and the focal length in its EXIF.
+  var pending = null;
+
+  function choosePhoto(value) {
+    photoError.textContent = "";
+    ownBox.hidden = value !== "own";
+    // Without a photo of their own yet, the current picture stays until one is picked.
+    if (value === "own" && !state.ownUrl) { fileInput.click(); return; }
+    if (value !== "own") lastChoice = value;
+    state.scene = value === "person";
+    if (value === "own") showOwn(state.ownUrl);
+    else if (!state.scene) showSample(parseInt(value.split("-")[1], 10));
+    render();
+  }
+
+  function chooseLast() {
+    var tile = form.querySelector('input[name="photo"][value="' + lastChoice + '"]');
+    var focused = document.activeElement === form.querySelector('input[name="photo"][value="own"]');
+    tile.checked = true;
+    choosePhoto(lastChoice);
+    if (focused) tile.focus();
   }
 
   form.addEventListener("change", function (event) {
     var name = event.target.name;
     if (name === "unit") {
-      var unit = event.target.value;
-      if (unit === state.unit) return;
-      var factor = unit === "ft" ? 1 / FOOT : FOOT;
-      state.distance = round(state.distance * factor, 1);
-      state.subject = round(state.subject * factor, state.subject * factor < 1 ? 2 : 1);
-      state.unit = unit;
+      if (event.target.value === state.unit) return;
+      // From the metres, so m, ft, m gives back the same numbers.
+      state.unit = event.target.value;
+      state.distance = shown(inUnit(state.metres.distance));
+      state.subject = shown(inUnit(state.metres.subject));
       syncDistanceInputs();
       render();
     } else if (name === "orient") {
       state.vertical = event.target.value === "v";
       render();
     } else if (name === "photo") {
-      var own = event.target.value === "own";
-      ownBox.hidden = !own;
-      state.scene = event.target.value === "person";
-      if (state.scene) {
-        render();
-      } else if (!own) {
-        showSample(parseInt(event.target.value.split("-")[1], 10));
-        render();
-      } else if (state.ownUrl) {
-        photo.src = state.ownUrl;
-        state.photoFocal = parseFloat(photoFocalInput.value) || 26;
-        render();
-      } else {
-        render();
-        fileInput.click();
-      }
+      choosePhoto(event.target.value);
     }
   });
 
   fileInput.addEventListener("change", function () {
     var file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-    if (state.ownUrl) URL.revokeObjectURL(state.ownUrl);
-    state.ownUrl = URL.createObjectURL(file);
+    if (!file) { if (!state.ownUrl) chooseLast(); return; }
+    var url = URL.createObjectURL(file);
     file.slice(0, 256 * 1024).arrayBuffer().then(function (buffer) {
       var focal = null;
       try { focal = exifEquivalentFocal(buffer); } catch (err) { focal = null; }
-      if (focal) photoFocalInput.value = focal;
-      state.photoFocal = parseFloat(photoFocalInput.value) || 26;
-      photo.src = state.ownUrl;
+      pending = { url: url, focal: focal };
+      photo.removeAttribute("srcset");
+      photo.src = url;
     });
+  });
+  fileInput.addEventListener("cancel", function () { if (!state.ownUrl) chooseLast(); });
+
+  photo.addEventListener("load", function () {
+    if (pending && photo.src === pending.url) {
+      // The picked photo opened and replaces any before it. Without a focal
+      // length in its details, it starts again from the iPhone main camera.
+      if (state.ownUrl) URL.revokeObjectURL(state.ownUrl);
+      state.ownUrl = pending.url;
+      state.scene = false;
+      state.photoFocal = pending.focal || 26;
+      photoFocalInput.value = state.photoFocal;
+      focalNote.className = "field-note";
+      complain(focalNote, pending.focal ? null : fill(strings["tool.photo_focal_missing"], { focal: mm(26) }), []);
+      photoFocalInput.removeAttribute("aria-invalid");
+      pending = null;
+    }
+    render();
+  });
+  // A photo this browser can't open (HEIC outside Safari): back to the one
+  // before, with a note saying which formats work.
+  photo.addEventListener("error", function () {
+    if (!pending || photo.src !== pending.url) return;
+    URL.revokeObjectURL(pending.url);
+    pending = null;
+    fileInput.value = "";
+    if (state.ownUrl) showOwn(state.ownUrl); else chooseLast();
+    photoError.textContent = strings["tool.photo_error"];
   });
 
   photoFocalInput.addEventListener("input", function () {
     var value = parseFloat(photoFocalInput.value);
-    if (validFocal(value) && form.querySelector('input[name="photo"]:checked').value === "own") {
+    focalNote.className = "field-note";
+    complain(focalNote, null, [photoFocalInput]);
+    if (validFocal(value) && showingOwn()) {
       state.photoFocal = value;
       render();
     }
   });
+  photoFocalInput.addEventListener("change", function () {
+    if (validFocal(parseFloat(photoFocalInput.value))) return;
+    focalNote.className = "field-error";
+    complain(focalNote, strings["tool.focal_error"], [photoFocalInput]);
+  });
 
-  photo.addEventListener("load", render);
-  // Labels grow on narrow screens (site.css), so place them again when that flips.
-  var narrow = window.matchMedia("(max-width: 600px)");
-  if (narrow.addEventListener) narrow.addEventListener("change", drawFrames);
+  // Labels change size at these widths (site.css), so place them again when one is crossed.
+  ["(max-width: 600px)", "(max-width: 1100px)"].forEach(function (query) {
+    var list = window.matchMedia(query);
+    if (list.addEventListener) list.addEventListener("change", drawFrames);
+  });
 
+  var shareTimer;
+  function say(text, seconds) {
+    shareStatus.textContent = text;
+    clearTimeout(shareTimer);
+    shareTimer = setTimeout(function () { shareStatus.textContent = ""; }, seconds * 1000);
+  }
   $("share").addEventListener("click", function () {
-    var done = function () { shareStatus.textContent = strings["tool.copied"]; };
+    // The visitor's own photo never leaves the browser, so the link opens on a sample; say so.
+    var own = showingOwn() ? strings["tool.share_own"] : "";
     // Phones get the system share sheet; elsewhere the link goes to the clipboard.
     if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
-      navigator.share({ title: document.title, url: location.href }).catch(function () {});
+      navigator.share({ title: document.title, url: location.href }).then(function () { if (own) say(own, 10); }, function () {});
     } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(location.href).then(done, function () {});
+      navigator.clipboard.writeText(location.href).then(function () {
+        say(own ? strings["tool.copied"] + " · " + own : strings["tool.copied"], own ? 10 : 4);
+      }, function () {});
     }
   });
 
@@ -995,6 +1145,7 @@
     form.querySelector('input[name="photo"][value="sample-' + state.sample + '"]').checked = true;
     showSample(state.sample);
   }
+  lastChoice = state.scene ? "person" : "sample-" + state.sample;
   // The person tile and the icons on the Fit buttons are drawn like the scene.
   drawScene($("person-thumb"), { focal: 36, aspect: SCENE_ASPECT, distance: 3, height: 1.8, eye: data.eye, tile: 1, aim: 0.9, id: "thumb" });
   Array.prototype.forEach.call(form.querySelectorAll("svg.figure"), function (icon) {
@@ -1006,4 +1157,11 @@
   var staticFigure = $("static-figure");
   if (staticFigure) staticFigure.hidden = true;
   render();
+  // On phones the chips scroll sideways: bring the first chosen one into view.
+  [chipsBox, zoomsBox].forEach(function (box) {
+    var chip = box.querySelector('[aria-pressed="true"]');
+    if (!chip || box.scrollWidth <= box.clientWidth) return;
+    var b = box.getBoundingClientRect(), c = chip.getBoundingClientRect();
+    if (c.left < b.left + 16 || c.right > b.right - 28) box.scrollLeft += data.rtl ? c.right - b.right + 28 : c.left - b.left - 16;
+  });
 })();
