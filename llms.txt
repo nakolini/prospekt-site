@@ -10,6 +10,16 @@
 - [Changelog](https://prospekt.nakolini.com/changelog/): every release
 - [App Store](https://apps.apple.com/app/id6760914468)
 
+## Facts
+
+- App Store name: Lens Simulator: Prospekt (localized: Lenssimulator: Prospekt; Objektivsimulator: Prospekt; Simulador Objetivos: Prospekt; Simulador de Lentes: Prospekt; Simulateur Objectif: Prospekt; Simulatore Obiettivi: Prospekt; レンズシミュレーター: Prospekt; 鏡頭模擬器: Prospekt; 镜头模拟器: Prospekt; 렌즈 시뮬레이터: Prospekt)
+- App Store: https://apps.apple.com/app/id6760914468, sold by Vitalii Kikot, co-founder of nakolini
+- Version 1.3.2, released 2026-10-03. Site updated 2026-10-10
+- Price: one-time purchase, no subscription, no in-app purchases. US $3.99, DE 3,99 €, ES 3,99 €, FR 3,99 €, IT 3,99 €, JP ¥600, KR ￦6,600, NL € 3,99, PL 19,99 zł, BR R$ 24,90, TR ₺199,99, UA 4,99 USD, CN ¥28.00, TW NT$120.00
+- Platform: iPhone, iOS 17 or later. No Android or iPad version. Works offline; no account, no analytics, no ads
+- What it does: a live viewfinder that crops the iPhone camera to the field of view of a 14 to 300 mm lens on a chosen camera body, with 1.4x and 2x extenders and custom bodies
+- What it doesn't do: depth of field, bokeh, distortion or lens rendering. Below about 13 mm equivalent the iPhone's ultra-wide is the limit, and long focal lengths use digital zoom, so they look soft. For cinema cameras and cine lenses, a director's viewfinder such as Artemis or Cadrage fits better
+
 ## Languages
 
 Every page is available in: English (https://prospekt.nakolini.com/), العربية (https://prospekt.nakolini.com/ar/), Deutsch (https://prospekt.nakolini.com/de/), Español (https://prospekt.nakolini.com/es/), Français (https://prospekt.nakolini.com/fr/), Italiano (https://prospekt.nakolini.com/it/), 日本語 (https://prospekt.nakolini.com/ja/), 한국어 (https://prospekt.nakolini.com/ko/), Nederlands (https://prospekt.nakolini.com/nl/), Polski (https://prospekt.nakolini.com/pl/), Português (Brasil) (https://prospekt.nakolini.com/pt-br/), Türkçe (https://prospekt.nakolini.com/tr/), Українська (https://prospekt.nakolini.com/uk/), 简体中文 (https://prospekt.nakolini.com/zh-hans/), 繁體中文 (https://prospekt.nakolini.com/zh-hant/).

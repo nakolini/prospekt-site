@@ -1,6 +1,6 @@
 # prospekt-site
 
-The website for [Prospekt](https://apps.apple.com/app/id6760914468), the iPhone lens simulator, served by GitHub Pages from `main`.
+The website for [Prospekt](https://apps.apple.com/app/id6760914468), the iPhone lens simulator, live at **https://prospekt.nakolini.com** and served by GitHub Pages from `main`.
 
 It has four kinds of pages, in 15 languages (the app's own, without Russian), all plain HTML that reads fine without JavaScript:
 

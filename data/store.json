@@ -1,0 +1,107 @@
+{
+  "en": {
+    "storefront": "us",
+    "name": "Lens Simulator: Prospekt",
+    "price": "$3.99",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "ar": {
+    "storefront": "us",
+    "name": "Lens Simulator: Prospekt",
+    "price": "$3.99",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "de": {
+    "storefront": "de",
+    "name": "Objektivsimulator: Prospekt",
+    "price": "3,99 €",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "es": {
+    "storefront": "es",
+    "name": "Simulador Objetivos: Prospekt",
+    "price": "3,99 €",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "fr": {
+    "storefront": "fr",
+    "name": "Simulateur Objectif: Prospekt",
+    "price": "3,99 €",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "it": {
+    "storefront": "it",
+    "name": "Simulatore Obiettivi: Prospekt",
+    "price": "3,99 €",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "ja": {
+    "storefront": "jp",
+    "name": "レンズシミュレーター: Prospekt",
+    "price": "¥600",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "ko": {
+    "storefront": "kr",
+    "name": "렌즈 시뮬레이터: Prospekt",
+    "price": "￦6,600",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "nl": {
+    "storefront": "nl",
+    "name": "Lenssimulator: Prospekt",
+    "price": "€ 3,99",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "pl": {
+    "storefront": "pl",
+    "name": "Lens Simulator: Prospekt",
+    "price": "19,99 zł",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "pt-BR": {
+    "storefront": "br",
+    "name": "Simulador de Lentes: Prospekt",
+    "price": "R$ 24,90",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "tr": {
+    "storefront": "tr",
+    "name": "Lens Simulator: Prospekt",
+    "price": "₺199,99",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "uk": {
+    "storefront": "ua",
+    "name": "Lens Simulator: Prospekt",
+    "price": "4,99 USD",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "zh-Hans": {
+    "storefront": "cn",
+    "name": "镜头模拟器: Prospekt",
+    "price": "¥28.00",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  },
+  "zh-Hant": {
+    "storefront": "tw",
+    "name": "鏡頭模擬器: Prospekt",
+    "price": "NT$120.00",
+    "version": "1.3.2",
+    "released": "2026-10-03"
+  }
+}
