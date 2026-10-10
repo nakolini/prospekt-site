@@ -32,8 +32,18 @@ THREADS_URL = "https://www.threads.net/@dmytro.builds"
 ANONIMO_URL = "https://apps.apple.com/app/id6762560095"
 EXPENNY_URL = "https://apps.apple.com/app/id6758223013"
 
-SAMPLE = {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg",
-          "width": 1920, "height": 1280, "focal": 14.0}
+# Sample photos for the tool, each credited in the footer of pages that show it.
+SAMPLES = [
+    {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "width": 1920, "height": 1280,
+     "focal": 14.0, "label_key": "tool.photo_sample", "credit_key": "footer.photo_credit"},
+    # Canon EOS R5 at 10 mm, trimmed from 8192 to 8013 px wide on Commons: 10 x 8192 / 8013.
+    {"src": "assets/sample-10mm.jpg", "small": None, "width": 1920, "height": 1280,
+     "focal": 10.2, "label_key": "tool.photo_sample_10", "credit_key": "footer.photo_credit_10"},
+    # Canon EOS 5D Mark IV at 20 mm, full 6720 x 4480 frame.
+    {"src": "assets/sample-20mm.jpg", "small": None, "width": 1920, "height": 1280,
+     "focal": 20.0, "label_key": "tool.photo_sample_20", "credit_key": "footer.photo_credit_20"},
+]
+SAMPLE = SAMPLES[0]
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -57,9 +67,9 @@ LANGUAGES = [
     ("zh-Hant", "zh-hant", "繁體中文"),
 ]
 RTL = {"ar"}
-# Numbers with a unit inside translated sentences ("50 mm", "1.4x", "f/1.4"),
+# Numbers with a unit inside translated sentences ("50 mm", "1.8 m", "1.4x", "f/1.4"),
 # isolated on right-to-left pages like the generated ones.
-MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|x|°))?(?:\s?(?:-|to)\s?\d+(?:\s?mm)?)?")
+MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|m|ft|x|°)(?!\w))?(?:\s?(?:-|to)\s?\d+(?:\s?mm)?)?")
 DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "ru", "tr", "uk"}
 
 # Generated paths, removed before each build so stale pages never linger.
@@ -119,7 +129,10 @@ class Lang:
         return template.format(**values)
 
     def num(self, value, decimals=1):
-        text = "%.*f" % (decimals, value)
+        # Python 3.10+ has a correctly rounded math.hypot, so a value such as
+        # 22.5 / 50 can land a hair either side of 0.45 depending on the
+        # version. Rounding to 9 places first gives the same text on all of them.
+        text = "%.*f" % (decimals, round(value, 9))
         return text.replace(".", ",") if self.code in DECIMAL_COMMA else text
 
     def isolate(self, text):
@@ -131,6 +144,20 @@ class Lang:
 
     def deg(self, value):
         return self.isolate(self.num(value) + "°")
+
+    # Lengths keep a no-break space before the unit so "3.1 m" never wraps.
+    def metres(self, value, decimals=1):
+        """A distance for prose and tables, in metres."""
+        return self.isolate(self.num(value, decimals) + "\u00a0m")
+
+    def metres_feet(self, value):
+        """A distance with feet after it, for readers who think in feet."""
+        feet = value / lm.FOOT_M
+        return self.isolate("%s\u00a0m (%s\u00a0ft)" % (self.num(value), self.num(feet, 1 if feet < 10 else 0)))
+
+    def size(self, width, height):
+        """Width x height of a scene in metres."""
+        return self.isolate("%s\u00a0\u00d7 %s\u00a0m" % (self.num(width), self.num(height)))
 
     def crop(self, crop):
         text = ("%.2f" % crop).rstrip("0").rstrip(".")
@@ -250,9 +277,9 @@ def header(lang, root, path):
         langname=e(lang.name), switch=switch)
 
 
-def footer(lang, root, photo_credit):
+def footer(lang, root, credit_keys):
     home = root + lang.prefix
-    credit = '<p class="credit">%s</p>' % lang.t("footer.photo_credit") if photo_credit else ""
+    credit = "".join('<p class="credit">%s</p>' % lang.t(k) for k in credit_keys)
     return """<footer class="site-footer"><div class="wrap">
 <p>{made} <a href="{threads}" rel="me">Threads</a></p>
 <p>{also} <a href="{anonimo}">{anonimo_t}</a> · <a href="{expenny}">{expenny_t}</a></p>
@@ -277,7 +304,9 @@ def render(lang, page):
     jsonld = "".join(
         '<script type="application/ld+json">%s</script>\n' % json.dumps(block, ensure_ascii=False).replace("</", "<\\/")
         for block in page.jsonld)
-    uses_photo = "sample-14mm" in page.body
+    # Credit every sample photo the page shows or offers.
+    credits = [s["credit_key"] for s in SAMPLES
+               if s["src"] in page.body or (s["small"] and s["small"] in page.body)]
     return """<!doctype html>
 <html lang="{code}" dir="{dir}">
 <head>
@@ -309,7 +338,7 @@ def render(lang, page):
         canonical=e(canonical), alternates=alternates, og_image=e(BASE_URL + "/" + SAMPLE["small"]),
         app_id=APP_ID, root=root, extra_head=page.extra_head, jsonld=jsonld,
         header=header(lang, root, page.path), body=page.body.replace("{root}", root),
-        footer=footer(lang, root, uses_photo), scripts=page.scripts.replace("{root}", root))
+        footer=footer(lang, root, credits), scripts=page.scripts.replace("{root}", root))
 
 
 def cta_box(lang, campaign):
@@ -455,6 +484,33 @@ def angle_table(lang, focals, crop, link_rows=False):
         v=lang.t("tool.table_v"), d=lang.t("tool.table_d"), rows="".join(rows))
 
 
+def coverage_table(lang, crop):
+    """What each lens covers at 1 to 10 m: width x height, camera horizontal."""
+    head = "".join('<th scope="col">%s</th>' % lang.t("tool.at_distance", distance=lang.metres(d, 0))
+                   for d in lm.COVERAGE_DISTANCES)
+    rows = "".join('<tr><th scope="row">%s</th>%s</tr>' % (
+        lang.mm(focal), "".join("<td>%s</td>" % lang.size(*lm.coverage(focal, crop, d))
+                                for d in lm.COVERAGE_DISTANCES))
+        for focal in lm.COVERAGE_FOCAL_LENGTHS)
+    return ('<div class="scroll"><table class="distances"><thead><tr><th scope="col">%s</th>%s</tr></thead>'
+            "<tbody>%s</tbody></table></div>") % (lang.t("tool.table_focal"), head, rows)
+
+
+def portrait_distances(crop, focal):
+    """Full-body and head-and-shoulders distances in metres, camera vertical."""
+    return (lm.distance_to_fit(lm.FULL_BODY_M, focal, crop),
+            lm.distance_to_fit(lm.HEAD_SHOULDERS_M, focal, crop))
+
+
+def portrait_list(lang, crop, row_key, **values):
+    items = []
+    for focal in lm.PORTRAIT_FOCAL_LENGTHS:
+        full, head = portrait_distances(crop, focal)
+        items.append("<li>%s</li>" % lang.t(row_key, focal=lang.mm(focal), full=lang.metres_feet(full),
+                                             head=lang.metres_feet(head), **values))
+    return '<ul class="portraits">%s</ul>' % "".join(items)
+
+
 def body_options(lang, bodies):
     generic = "".join('<option value="generic-%s" data-crop="%s">%s (%s)</option>' % (
         ("%g" % c).replace(".", "_"), c, e(lang.format_name(c)), lang.crop(c)) for c in GENERIC_CROPS)
@@ -473,37 +529,61 @@ def body_options(lang, bodies):
 
 
 TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share",
-                "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d"]
+                "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d",
+                "tool.table_covers", "tool.table_fit_v", "tool.table_fit_h"]
+
+ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70, 200), (100, 400), (150, 600)]
 
 
 def tool_page(lang, bodies):
-    faq = [(lang.t("tool.faq_%d_q" % i), lang.t("tool.faq_%d_a" % i)) for i in range(1, 4)]
+    faq_values = {"d%d" % f: lang.metres_feet(portrait_distances(1.0, f)[0]) for f in lm.PORTRAIT_FOCAL_LENGTHS}
+    faq = [(lang.t("tool.faq_%d_q" % i), lang.t("tool.faq_%d_a" % i, **faq_values)) for i in range(1, 5)]
     default_focals = [24, 35, 50, 85]
     chips = "".join('<button type="button" class="chip" data-focal="%d" aria-pressed="%s">%d</button>' % (
         f, "true" if f in default_focals else "false", f) for f in lm.TABLE_FOCAL_LENGTHS)
-    strings = {k: lang.raw(k, focal="{focal}") for k in TOOL_JS_KEYS}
-    data = json.dumps({"strings": strings, "sample": SAMPLE, "lang": lang.code,
-                       "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl"}, ensure_ascii=False).replace("</", "<\\/")
+    zoom_chips = "".join('<button type="button" class="chip" data-zoom="%d-%d" aria-pressed="false">%d-%d</button>' % (
+        a, b, a, b) for a, b in ZOOM_PRESETS)
+    strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}") for k in TOOL_JS_KEYS}
+    data = json.dumps({"strings": strings, "samples": SAMPLES, "lang": lang.code,
+                       "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl",
+                       "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M},
+                      ensure_ascii=False).replace("</", "<\\/")
+    samples = "".join('<label class="inline"><input type="radio" name="photo" value="sample-%d"%s> %s</label>' % (
+        i, " checked" if i == 0 else "", lang.t(sample["label_key"])) for i, sample in enumerate(SAMPLES))
+    options = body_options(lang, bodies)
     body = """<h1>{h1}</h1>
 <p class="lead">{lead}</p>
 <noscript><p class="note">{noscript}</p></noscript>
 <form id="tool" class="tool" hidden>
 <div class="controls">
 <label>{body_label}<select id="body">{options}</select></label>
-<fieldset><legend>{focals_label}</legend><div class="chips">{chips}</div>
-<label class="inline">{custom_label} <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric"> <button type="button" id="add">{add}</button></label></fieldset>
+<label>{body2_label}<select id="body2"><option value="">{body2_none}</option>{options}</select></label>
+<fieldset class="wide"><legend>{focals_label}</legend><div class="chips" id="chips">{chips}</div>
+<label class="inline">{custom_label} <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric"> <button type="button" id="add">{add}</button></label>
+<p class="sublabel" id="zooms-label">{zooms_label}</p>
+<div class="chips" id="zooms" role="group" aria-labelledby="zooms-label">{zoom_chips}</div>
+<div class="inline-row"><span id="zoom-custom-label">{zoom_custom_label}</span> <span class="range"><input id="zoom-from" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_from}"> <span aria-hidden="true">-</span> <input id="zoom-to" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_to}"></span> <button type="button" id="add-zoom" aria-describedby="zoom-custom-label">{add}</button></div>
+</fieldset>
+<fieldset><legend>{distance_legend}</legend>
+<div class="field"><label for="distance">{distance_label}</label> <span class="with-unit"><input id="distance" type="number" min="0.1" max="100000" step="0.1" value="3" inputmode="decimal"> <span class="unit">m</span></span></div>
+<div class="segmented" role="radiogroup" aria-label="{unit_label}"><label><input type="radio" name="unit" value="m" checked> {unit_m}</label><label><input type="radio" name="unit" value="ft"> {unit_ft}</label></div>
+<div class="field"><label for="subject">{subject_label}</label> <span class="with-unit"><input id="subject" type="number" min="0.01" max="100000" step="0.1" value="1.8" inputmode="decimal"> <span class="unit">m</span></span></div>
+<div class="segmented" role="radiogroup" aria-label="{subject_label}"><label><input type="radio" name="orient" value="v" checked> {vertical}</label><label><input type="radio" name="orient" value="h"> {horizontal}</label></div>
+<p class="muted">{subject_hint}</p>
+</fieldset>
 <fieldset><legend>{photo_label}</legend>
-<label class="inline"><input type="radio" name="photo" value="sample" checked> {photo_sample}</label>
+{samples}
 <label class="inline"><input type="radio" name="photo" value="own"> {photo_own}</label>
 <div id="own" hidden><input id="file" type="file" accept="image/*">
 <label>{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26"></label>
 <p class="muted">{photo_focal_hint}</p><p class="muted">{photo_private}</p></div></fieldset>
 </div>
 <div class="stage">
-<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" width="{w}" height="{h}" alt="">{frames}</div>
+<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}</div>
+<p class="legend" id="legend" hidden></p>
 <p class="muted" id="notes"></p>
 <div id="results">{table}</div>
-<p class="muted">{preview_hint} {soft}</p>
+<p class="muted">{preview_hint} {distance_note} {soft}</p>
 <figure class="preview" id="preview" hidden><canvas id="preview-canvas"></canvas><figcaption id="preview-caption"></figcaption></figure>
 <p><button type="button" id="share">{share}</button> <span id="share-status" role="status"></span></p>
 </div>
@@ -511,24 +591,36 @@ def tool_page(lang, bodies):
 <figure class="photo" id="static-figure"><div class="photo-frame"><img src="{{root}}{small}" width="1200" height="800" alt="" loading="lazy">{frames}</div>
 <figcaption>{static_caption}</figcaption></figure>
 <section><h2>{equiv_title}</h2><p>{equiv_intro}</p>{equiv_table}</section>
+<section id="distances"><h2>{distance_title}</h2><p>{distance_intro}</p>{distance_table}</section>
+<section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}</section>
 <section><h2>{math_title}</h2><ul>{math}</ul></section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}
 <script type="application/json" id="tool-data">{data}</script>""".format(
         h1=lang.t("tool.h1"), lead=lang.t("tool.lead"), noscript=lang.t("tool.noscript"),
-        body_label=lang.t("tool.body_label"), options=body_options(lang, bodies),
+        body_label=lang.t("tool.body_label"), options=options, body2_label=lang.t("tool.body2_label"),
+        body2_none=lang.t("tool.body2_none"),
         focals_label=lang.t("tool.focals_label"), chips=chips, custom_label=lang.t("tool.custom_label"),
-        add=lang.t("tool.add"), photo_label=lang.t("tool.photo_label"),
-        photo_sample=lang.t("tool.photo_sample"), photo_own=lang.t("tool.photo_own"),
+        add=lang.t("tool.add"), zooms_label=lang.t("tool.zooms_label"), zoom_chips=zoom_chips,
+        zoom_custom_label=lang.t("tool.zoom_custom_label"), zoom_from=lang.t("tool.zoom_from"),
+        zoom_to=lang.t("tool.zoom_to"), distance_legend=lang.t("tool.distance_legend"),
+        distance_label=lang.t("tool.distance_label"), unit_label=lang.t("tool.unit_label"),
+        unit_m=lang.t("tool.unit_m"), unit_ft=lang.t("tool.unit_ft"), subject_label=lang.t("tool.subject_label"),
+        vertical=lang.t("tool.subject_vertical"), horizontal=lang.t("tool.subject_horizontal"),
+        subject_hint=lang.t("tool.subject_hint"), photo_label=lang.t("tool.photo_label"),
+        samples=samples, photo_own=lang.t("tool.photo_own"),
         photo_focal_label=lang.t("tool.photo_focal_label"), photo_focal_hint=lang.t("tool.photo_focal_hint"),
         photo_private=lang.t("tool.photo_private"), src=SAMPLE["src"], small=SAMPLE["small"],
         w=SAMPLE["width"], h=SAMPLE["height"], frames=photo_frames_svg(default_focals, 1.0),
         table=angle_table(lang, default_focals, 1.0), preview_hint=lang.t("tool.preview_hint"),
-        soft=lang.t("tool.soft_note"), share=lang.t("tool.share"),
+        distance_note=lang.t("tool.distance_note"), soft=lang.t("tool.soft_note"), share=lang.t("tool.share"),
         static_caption=lang.t("tool.static_caption"), equiv_title=lang.t("tool.equiv_title"),
         equiv_intro=lang.t("tool.equiv_intro"), equiv_table=equivalence_table(lang),
+        distance_title=lang.t("tool.distance_title"), distance_intro=lang.t("tool.distance_intro"),
+        distance_table=coverage_table(lang, 1.0), portrait_title=lang.t("tool.portrait_title"),
+        portrait_intro=lang.t("tool.portrait_intro"), portraits=portrait_list(lang, 1.0, "tool.portrait_row"),
         math_title=lang.t("tool.math_title"),
-        math="".join("<li>%s</li>" % lang.t("tool.math_%d" % i) for i in range(1, 5)),
+        math="".join("<li>%s</li>" % lang.t("tool.math_%d" % i) for i in range(1, 6)),
         faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
         cta_box=cta_box(lang, "web_lenstool"), data=data)
     app = {
@@ -573,6 +665,10 @@ def body_page(lang, body, bodies):
         "body": name, "crop": lang.crop(crop), "format": lang.format_name(crop),
         "equiv_50": lang.mm(lm.equivalent(50, crop)), "h_50": lang.deg(h50),
         "focal_for_50": lang.mm(lm.focal_for_equivalent(50, crop)),
+        "full_85": lang.metres_feet(portrait_distances(crop, 85)[0]),
+        "head_85": lang.metres_feet(portrait_distances(crop, 85)[1]),
+        "cover_35_3": lang.size(*lm.coverage(35, crop, 3)),
+        "cover_35_10": lang.size(*lm.coverage(35, crop, 10)),
     }
     if math.isclose(crop, 1.0):
         intro = lang.t("body.intro_ff", **values)
@@ -585,7 +681,8 @@ def body_page(lang, body, bodies):
                       for eq in lm.CLASSIC_EQUIVALENTS)
     same = [b for b in bodies if math.isclose(b["crop"], crop) and b["slug"] != body["slug"]]
     same_html = ", ".join('<a href="../%s/">%s</a>' % (b["slug"], e(b["display"])) for b in same)
-    faq = [(lang.t("body.faq_%d_q" % i, **values), lang.t("body.faq_%d_a" % i, **values)) for i in range(1, 4)]
+    # The app question stays last.
+    faq = [(lang.t("body.faq_%d_q" % i, **values), lang.t("body.faq_%d_a" % i, **values)) for i in [1, 2, 4, 5, 3]]
     page_body = """<p class="crumbs"><a href="../">{cameras}</a></p>
 <h1>{h1}</h1>
 <p class="lead">{intro}</p>
@@ -595,6 +692,8 @@ def body_page(lang, body, bodies):
 <figure class="nested-figure">{svg}<figcaption>{frames_caption}</figcaption></figure></section>
 <section><h2>{table_title}</h2>{table}</section>
 <section><h2>{classic_title}</h2><p>{classic_intro}</p><ul>{classic}</ul></section>
+<section id="distances"><h2>{distance_title}</h2><p>{distance_intro}</p>{distance_table}</section>
+<section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}</section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}
 <section><h2>{same_title}</h2><p>{same}</p></section>""".format(
@@ -604,7 +703,12 @@ def body_page(lang, body, bodies):
         svg=nested_frames_svg(crop), frames_caption=lang.t("body.frames_caption", **values),
         table_title=lang.t("body.table_title", **values), table=angle_table(lang, lm.TABLE_FOCAL_LENGTHS, crop),
         classic_title=lang.t("body.classic_title", **values), classic_intro=lang.t("body.classic_intro", **values),
-        classic=classic, faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
+        classic=classic, distance_title=lang.t("body.distance_title", **values),
+        distance_intro=lang.t("body.distance_intro", **values), distance_table=coverage_table(lang, crop),
+        portrait_title=lang.t("body.portrait_title", **values),
+        portrait_intro=lang.t("body.portrait_intro", **values),
+        portraits=portrait_list(lang, crop, "body.portrait_row", body=name),
+        faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
         cta_box=cta_box(lang, "web_body"), same_title=lang.t("body.same_format"), same=same_html)
     path = "cameras/%s/" % body["slug"]
     crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.cameras"), "cameras/"), (name, path)])
@@ -682,8 +786,11 @@ def llms_txt(bodies):
         "## Pages",
         "",
         "- [Prospekt for iPhone](%s/): what it does, price, privacy, limits, comparison, FAQ" % BASE_URL,
-        "- [Lens comparison tool](%s/lens-compare/): free web tool, frames of any focal lengths on any body over a photo" % BASE_URL,
-        "- [Cameras](%s/cameras/): focal length, full-frame equivalent and angle of view tables for %d camera bodies" % (BASE_URL, len(bodies)),
+        "- [Lens comparison tool](%s/lens-compare/): free web tool, frames of any focal lengths and zooms on one or two "
+        "bodies over a photo, how much of the scene each lens covers at a distance, and how far to stand to fit a "
+        "subject (metres or feet). The distance calculator is part of the web tool, not the app" % BASE_URL,
+        "- [Cameras](%s/cameras/): focal length, full-frame equivalent and angle of view tables for %d camera bodies, "
+        "what 24 to 135 mm cover at 1 to 10 m, and portrait distances (full body, head and shoulders)" % (BASE_URL, len(bodies)),
         "- [Changelog](%s/changelog/): every release" % BASE_URL,
         "- [App Store](https://apps.apple.com/app/id%s)" % APP_ID,
         "",

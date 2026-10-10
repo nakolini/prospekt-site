@@ -5,8 +5,8 @@
 ## Pages
 
 - [Prospekt for iPhone](https://prospekt.nakolini.com/): what it does, price, privacy, limits, comparison, FAQ
-- [Lens comparison tool](https://prospekt.nakolini.com/lens-compare/): free web tool, frames of any focal lengths on any body over a photo
-- [Cameras](https://prospekt.nakolini.com/cameras/): focal length, full-frame equivalent and angle of view tables for 59 camera bodies
+- [Lens comparison tool](https://prospekt.nakolini.com/lens-compare/): free web tool, frames of any focal lengths and zooms on one or two bodies over a photo, how much of the scene each lens covers at a distance, and how far to stand to fit a subject (metres or feet). The distance calculator is part of the web tool, not the app
+- [Cameras](https://prospekt.nakolini.com/cameras/): focal length, full-frame equivalent and angle of view tables for 59 camera bodies, what 24 to 135 mm cover at 1 to 10 m, and portrait distances (full body, head and shoulders)
 - [Changelog](https://prospekt.nakolini.com/changelog/): every release
 - [App Store](https://apps.apple.com/app/id6760914468)
 

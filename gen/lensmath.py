@@ -69,6 +69,41 @@ def frame_in_photo(focal, crop, photo_equivalent, photo_aspect):
     return (frame_half_w / photo_half_w, frame_half_h / photo_half_h)
 
 
+# Distance tables on the camera pages and the tool page.
+COVERAGE_FOCAL_LENGTHS = [24, 35, 50, 85, 135]
+COVERAGE_DISTANCES = [1, 2, 3, 5, 10]
+PORTRAIT_FOCAL_LENGTHS = [35, 50, 85, 135]
+# A full-body portrait fits a 1.8 m person, head and shoulders about 0.5 m,
+# both with the camera held vertically and the subject filling 90% of the
+# frame height.
+FULL_BODY_M = 1.8
+HEAD_SHOULDERS_M = 0.5
+PORTRAIT_FILL = 0.9
+FOOT_M = 0.3048
+
+
+def coverage(focal, crop, distance):
+    """Width and height of the scene a lens captures at a distance.
+
+    Camera held horizontally; the result is in the unit of distance. A
+    rectilinear lens focused far away: size = distance x sensor size / focal.
+    Close up, real lenses frame a little tighter than this.
+    """
+    w, h = sensor_size(crop)
+    return (distance * w / focal, distance * h / focal)
+
+
+def distance_to_fit(subject, focal, crop, vertical=True, fill=PORTRAIT_FILL):
+    """How far to stand so a subject of this height fills `fill` of the frame.
+
+    Vertical framing puts the sensor's long side upright. The result is in
+    the unit of subject.
+    """
+    w, h = sensor_size(crop)
+    upright = w if vertical else h
+    return subject / fill * focal / upright
+
+
 def format_name(crop):
     if math.isclose(crop, 1.0):
         return "full frame"
