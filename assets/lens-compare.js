@@ -106,6 +106,8 @@
 
   function $(id) { return document.getElementById(id); }
   var bodySelects = [$("body"), $("body2")];
+  bodySelects[0].innerHTML = data.options;
+  bodySelects[1].insertAdjacentHTML("beforeend", data.options);
   var chipsBox = $("chips");
   var zoomsBox = $("zooms");
   var customInput = $("custom");
@@ -120,6 +122,7 @@
   var results = $("results");
   var resultsBox = $("results-box");
   var viewerHint = $("viewer-hint");
+  var lensCta = $("lens-cta");
   var lensBack = $("lens-back");
   var body2Box = $("body2-box");
   var addBody2 = $("add-body2");
@@ -408,9 +411,13 @@
     var parts = (state.selected || "").split("|");
     var cams = cameras();
     var cam = cams.filter(function (c) { return String(c.slot) === parts[1]; })[0];
-    viewerHint.textContent = cam && stage.classList.contains("lens")
+    var lens = cam && stage.classList.contains("lens");
+    viewerHint.textContent = lens
       ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.name + ")" : "") })
       : strings["tool.preview_hint"];
+    // In lens view the visitor has just done what the app does live, so offer it there.
+    lensCta.hidden = !lens;
+    if (lens) lensCta.firstChild.textContent = fill(strings["tool.lens_cta"], { focal: mm(parseFloat(parts[0])) }) + " \u2192";
     distanceSummary.textContent = fill(strings["tool.distance_summary"], {
       distance: typed(state.distance), height: typed(state.subject),
     });

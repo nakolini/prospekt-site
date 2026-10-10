@@ -28,6 +28,8 @@ APP_ID = "6760914468"
 PROVIDER_TOKEN = ""
 INDEXNOW_KEY = "ff5e02c36fce19d7d6baf4c02a9d5e1e"
 PRICE = "$3.99"
+# Bump when the pages change meaningfully: sitemap lastmod, JSON-LD dateModified and the footer.
+SITE_UPDATED = "2026-10-10"
 THREADS_URL = "https://www.threads.net/@dmytro.builds"
 ANONIMO_URL = "https://apps.apple.com/app/id6762560095"
 EXPENNY_URL = "https://apps.apple.com/app/id6758223013"
@@ -46,6 +48,8 @@ SAMPLES = [
 SAMPLE = SAMPLES[0]
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+with open(os.path.join(ROOT, "data", "store.json"), encoding="utf-8") as _f:
+    STORE = json.load(_f)
 
 # (code for hreflang and <html lang>, URL segment, name in that language)
 LANGUAGES = [
@@ -109,6 +113,8 @@ class Lang:
         self.strings = strings
         self.fallback = fallback
         self.dir = "rtl" if code in RTL else "ltr"
+        # App Store name, price and version in this language's storefront (scripts/store_info.py).
+        self.store = STORE.get(code, STORE["en"])
 
     @property
     def prefix(self):
@@ -118,11 +124,17 @@ class Lang:
         """A translated string with {placeholders} filled, HTML-escaped."""
         return e(self.raw(key, **values))
 
+    def with_app(self, key, campaign, **values):
+        """A translated string whose {app} placeholder becomes a link to Prospekt on the App Store."""
+        text = self.t(key, app="\x00", **values)
+        return text.replace("\x00", '<a href="%s">Prospekt</a>' % e(app_store_url(campaign)))
+
     def raw(self, key, **values):
         template = self.strings.get(key, self.fallback.get(key))
         if template is None:
             raise KeyError(key)
-        values.setdefault("price", PRICE)
+        values.setdefault("price", self.store["price"])
+        values.setdefault("store_name", self.store["name"])
         if self.dir == "rtl":
             template = MEASURE.sub(lambda m: self.isolate(m.group(0)), template)
         return template.format(**values)
@@ -283,13 +295,15 @@ def footer(lang, root, credit_keys):
 <p>{made} <a href="{threads}" rel="me">Threads</a></p>
 <p>{also} <a href="{anonimo}">{anonimo_t}</a> · <a href="{expenny}">{expenny_t}</a></p>
 <p><a href="{home}changelog/">{changelog}</a> · <a href="{root}support.html">{support}</a> · <a href="{root}privacy.html">{privacy}</a> · <a href="{root}terms.html">{terms}</a></p>
+<p>{updated}</p>
 {credit}
 </div></footer>""".format(
         made=lang.t("footer.made_by"), threads=THREADS_URL, also=lang.t("footer.also"),
         anonimo=e(ANONIMO_URL + "?ct=web_prospekt&mt=8"), anonimo_t=lang.t("footer.anonimo"),
         expenny=e(EXPENNY_URL + "?ct=web_prospekt&mt=8"), expenny_t=lang.t("footer.expenny"),
         home=home, root=root, changelog=lang.t("nav.changelog"), support=lang.t("footer.support"),
-        privacy=lang.t("footer.privacy"), terms=lang.t("footer.terms"), credit=credit)
+        privacy=lang.t("footer.privacy"), terms=lang.t("footer.terms"), credit=credit,
+        updated=lang.t("footer.updated", date=SITE_UPDATED, version=lang.store["version"]))
 
 
 def render(lang, page):
@@ -387,17 +401,39 @@ def organization_jsonld():
     }
 
 
+# One identity for the app on every page, so a page about lenses is tied to Prospekt.
+APP_ENTITY_ID = BASE_URL + "/#app"
+
+
+def app_ref_jsonld(lang):
+    return {
+        "@type": "MobileApplication",
+        "@id": APP_ENTITY_ID,
+        "name": "Prospekt",
+        "description": lang.raw("home.description"),
+        "operatingSystem": "iOS 17.0 or later",
+        "applicationCategory": "PhotographyApplication",
+        "url": BASE_URL + "/",
+        "downloadUrl": "https://apps.apple.com/app/id%s" % APP_ID,
+        "softwareVersion": STORE["en"]["version"],
+        "offers": {"@type": "Offer", "price": "3.99", "priceCurrency": "USD"},
+    }
+
+
 def app_jsonld(lang):
     return {
         "@context": "https://schema.org",
         "@type": "MobileApplication",
+        "@id": APP_ENTITY_ID,
         "name": "Prospekt",
         "alternateName": "Lens Simulator: Prospekt",
         "description": lang.raw("home.description"),
         "inLanguage": lang.code,
         "operatingSystem": "iOS 17.0 or later",
         "applicationCategory": "PhotographyApplication",
-        "url": url_for(lang, ""),
+        "url": BASE_URL + "/",
+        "softwareVersion": STORE["en"]["version"],
+        "dateModified": STORE["en"]["released"],
         "downloadUrl": "https://apps.apple.com/app/id%s" % APP_ID,
         "installUrl": "https://apps.apple.com/app/id%s" % APP_ID,
         "offers": {"@type": "Offer", "price": "3.99", "priceCurrency": "USD"},
@@ -410,7 +446,7 @@ def app_jsonld(lang):
 # ---------------------------------------------------------------- pages
 
 def home_page(lang):
-    faq = [(lang.t("home.faq_%d_q" % i), lang.t("home.faq_%d_a" % i)) for i in range(1, 10)]
+    faq = [(lang.t("home.faq_%d_q" % i), lang.t("home.faq_%d_a" % i)) for i in range(1, 11)]
     compare_rows = [
         ("home.compare_row_live", "home.compare_yes", "home.compare_live_calc", "home.compare_yes", "home.compare_yes"),
         ("home.compare_row_body", "home.compare_body_prospekt", "home.compare_body_calc", "home.compare_body_cine", "home.compare_yes"),
@@ -510,6 +546,18 @@ def portrait_list(lang, crop, row_key, **values):
     return '<ul class="portraits">%s</ul>' % "".join(items)
 
 
+def portrait_formats_table(lang):
+    """Full-body distance, camera vertical, for each focal length on each sensor size."""
+    crops = [1.0, 1.5, 1.6, 2.0]
+    head = "".join('<th scope="col">%s<br><span class="muted">%s</span></th>' % (
+        e(lang.format_name(c)), lang.crop(c)) for c in crops)
+    rows = "".join("<tr><th scope=\"row\">%s</th>%s</tr>" % (lang.mm(f), "".join(
+        "<td>%s</td>" % lang.metres_feet(portrait_distances(c, f)[0]) for c in crops))
+        for f in lm.PORTRAIT_FOCAL_LENGTHS)
+    return '<div class="scroll"><table class="distances"><thead><tr><th scope="col">%s</th>%s</tr></thead><tbody>%s</tbody></table></div>' % (
+        lang.t("tool.table_focal"), head, rows)
+
+
 def body_options(lang, bodies):
     generic = "".join('<option value="generic-%s" data-crop="%s">%s (%s)</option>' % (
         ("%g" % c).replace(".", "_"), c, e(lang.format_name(c)), lang.crop(c)) for c in GENERIC_CROPS)
@@ -529,7 +577,7 @@ def body_options(lang, bodies):
 
 TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share",
                 "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d",
-                "tool.table_covers", "tool.table_fit", "tool.preview_hint",
+                "tool.table_covers", "tool.table_fit", "tool.preview_hint", "tool.lens_cta",
                 "tool.distance_summary"]
 
 ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70, 200), (100, 400), (150, 600)]
@@ -537,14 +585,21 @@ ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70
 
 def tool_page(lang, bodies):
     faq_values = {"d%d" % f: lang.metres_feet(portrait_distances(1.0, f)[0]) for f in lm.PORTRAIT_FOCAL_LENGTHS}
-    faq = [(lang.t("tool.faq_%d_q" % i), lang.t("tool.faq_%d_a" % i, **faq_values)) for i in range(1, 5)]
+    faq_values.update({
+        "d85_15": lang.metres_feet(portrait_distances(1.5, 85)[0]),
+        "d85_16": lang.metres_feet(portrait_distances(1.6, 85)[0]),
+        "d85_15_h": lang.metres_feet(lm.distance_to_fit(lm.FULL_BODY_M, 85, 1.5, vertical=False)),
+        "d50_15": lang.metres_feet(portrait_distances(1.5, 50)[0]),
+    })
+    faq = [(lang.t("tool.faq_%d_q" % i), lang.t("tool.faq_%d_a" % i, **faq_values)) for i in range(1, 6)]
     default_focals = [24, 35, 50, 85]
     chips = "".join('<button type="button" class="chip" data-focal="%d" aria-pressed="%s">%d</button>' % (
         f, "true" if f in default_focals else "false", f) for f in lm.TABLE_FOCAL_LENGTHS)
     zoom_chips = "".join('<button type="button" class="chip" data-zoom="%d-%d" aria-pressed="false">%d-%d</button>' % (
         a, b, a, b) for a, b in ZOOM_PRESETS)
     strings = {k: lang.raw(k, focal="{focal}", distance="{distance}", height="{height}") for k in TOOL_JS_KEYS}
-    data = json.dumps({"strings": strings, "samples": SAMPLES, "lang": lang.code,
+    # The camera lists are filled in by the script, so the page's text doesn't open with 120 camera names.
+    data = json.dumps({"strings": strings, "samples": SAMPLES, "lang": lang.code, "options": body_options(lang, bodies),
                        "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl",
                        "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M},
                       ensure_ascii=False).replace("</", "<\\/")
@@ -554,7 +609,6 @@ def tool_page(lang, bodies):
         '<img src="{root}%s" width="240" height="160" alt=""><span class="tile-text">%s</span></label>' % (
             i, " checked" if i == 0 else "", e(html.unescape(lang.t(sample["label_key"]))), sample["thumb"],
             lang.mm(sample["focal"])) for i, sample in enumerate(SAMPLES))
-    options = body_options(lang, bodies)
     # The photo comes first and stays in view while the controls change it (site.css);
     # the table, notes and sharing follow.
     body = """<h1>{h1}</h1>
@@ -567,13 +621,14 @@ def tool_page(lang, bodies):
 <button type="button" class="lens-back" id="lens-back" hidden>{lens_back}</button></div>
 <p class="legend" id="legend" hidden></p>
 <p class="viewer-hint" id="viewer-hint">{preview_hint}</p>
+<p class="lens-cta" id="lens-cta" hidden><a href="{lens_url}"></a></p>
 <p class="notes" id="notes"></p>
 </div>
 <div class="panel">
 <div class="group">
-<label class="group-label" for="body">{body_label}</label><select id="body">{options}</select>
+<label class="group-label" for="body">{body_label}</label><select id="body"></select>
 <button type="button" class="link-button" id="add-body2" aria-controls="body2-box" aria-expanded="false">+ {body2_add}</button>
-<div id="body2-box" hidden><label class="group-label" for="body2">{body2_label}</label><select id="body2"><option value="">{body2_none}</option>{options}</select></div>
+<div id="body2-box" hidden><label class="group-label" for="body2">{body2_label}</label><select id="body2"><option value="">{body2_none}</option></select></div>
 </div>
 <div class="group">
 <p class="group-label" id="focals-label">{focals_label}</p>
@@ -610,17 +665,20 @@ def tool_page(lang, bodies):
 </form>
 <figure class="photo" id="static-figure"><div class="photo-frame"><img src="{{root}}{small}" width="1200" height="800" alt="" loading="lazy">{frames}</div>
 <figcaption>{static_caption}</figcaption></figure>
+<p class="app-line">{app_line}</p>
 <section><h2>{equiv_title}</h2><p>{equiv_intro}</p>{equiv_table}</section>
 <section id="distances"><h2>{distance_title}</h2><p>{distance_intro}</p>{distance_table}</section>
-<section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}</section>
+<section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}
+<h3>{formats_title}</h3><p>{formats_intro}</p>{formats_table}</section>
 <section><h2>{math_title}</h2><ul>{math}</ul></section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}
 <script type="application/json" id="tool-data">{data}</script>""".format(
         h1=lang.t("tool.h1"), lead=lang.t("tool.lead"), noscript=lang.t("tool.noscript"),
-        body_label=lang.t("tool.body_label"), options=options, body2_label=lang.t("tool.body2_label"),
+        body_label=lang.t("tool.body_label"), body2_label=lang.t("tool.body2_label"),
         body2_add=lang.t("tool.body2_add"), lens_back=lang.t("tool.lens_back"),
         angles_toggle=lang.t("tool.angles_toggle"), app_url=e(app_store_url("web_lenstool_inline")),
+        lens_url=e(app_store_url("web_lensview")), app_line=lang.with_app("app.line_tool", "web_lenstool_line"),
         cta_title=lang.t("cta.box_title"), app_short=lang.t("cta.app_store_short"),
         body2_none=lang.t("tool.body2_none"),
         focals_label=lang.t("tool.focals_label"), chips=chips, custom_label=lang.t("tool.custom_label"),
@@ -642,6 +700,8 @@ def tool_page(lang, bodies):
         distance_title=lang.t("tool.distance_title"), distance_intro=lang.t("tool.distance_intro"),
         distance_table=coverage_table(lang, 1.0), portrait_title=lang.t("tool.portrait_title"),
         portrait_intro=lang.t("tool.portrait_intro"), portraits=portrait_list(lang, 1.0, "tool.portrait_row"),
+        formats_title=lang.t("tool.portrait_formats_title"), formats_intro=lang.t("tool.portrait_formats_intro"),
+        formats_table=portrait_formats_table(lang),
         math_title=lang.t("tool.math_title"),
         math="".join("<li>%s</li>" % lang.t("tool.math_%d" % i) for i in range(1, 6)),
         faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
@@ -657,6 +717,7 @@ def tool_page(lang, bodies):
         "operatingSystem": "Any",
         "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
         "publisher": organization_jsonld(),
+        "mentions": app_ref_jsonld(lang),
     }
     crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.tool"), "lens-compare/")])
     return Page("lens-compare/", "tool.title", lang.raw("tool.description"), body,
@@ -692,41 +753,61 @@ def body_page(lang, body, bodies):
         "head_85": lang.metres_feet(portrait_distances(crop, 85)[1]),
         "cover_35_3": lang.size(*lm.coverage(35, crop, 3)),
         "cover_35_10": lang.size(*lm.coverage(35, crop, 10)),
+        "equiv_35": lang.mm(lm.equivalent(35, crop)),
+        "cover_50_3": lang.size(*lm.coverage(50, crop, 3)),
+        "focal_for_35": lang.mm(lm.focal_for_equivalent(35, crop)),
     }
+    full_frame = math.isclose(crop, 1.0)
     if math.isclose(crop, 1.0):
         intro = lang.t("body.intro_ff", **values)
     else:
         intro = lang.t("body.intro", **values)
     mount = "<p>%s</p>" % lang.t("body.mount", mount=body["mount"]) if body.get("mount") else ""
     note = "<p class=\"note\">%s</p>" % lang.t(body["note_key"]) if body.get("note_key") else ""
-    classic = "".join("<li>%s</li>" % lang.t("body.classic_row", equiv=lang.mm(eq), body=name,
-                                               focal=lang.mm(lm.focal_for_equivalent(eq, crop)))
-                      for eq in lm.CLASSIC_EQUIVALENTS)
+    # On full frame every lens is its own equivalent, so the list would only repeat itself.
+    classic = "" if full_frame else '<section><h2>%s</h2><p>%s</p><ul>%s</ul></section>' % (
+        lang.t("body.classic_title", **values), lang.t("body.classic_intro", **values),
+        "".join("<li>%s</li>" % lang.t("body.classic_row", equiv=lang.mm(eq), body=name,
+                                        focal=lang.mm(lm.focal_for_equivalent(eq, crop)))
+                for eq in lm.CLASSIC_EQUIVALENTS))
+    # Zoom ranges common for this sensor size; fixed-lens cameras have none.
+    zooms = "" if body.get("note_key") else '<section id="zooms"><h2>%s</h2><ul>%s</ul></section>' % (
+        lang.t("body.zoom_title", **values), "".join(
+            "<li>%s</li>" % lang.t("body.zoom_row_ff" if full_frame else "body.zoom_row", body=name,
+                                   zoom=lang.isolate("%d-%d mm" % (a, b)),
+                                   equiv=lang.isolate("%d-%d mm" % (round(a * crop), round(b * crop))),
+                                   wide=lang.deg(lm.angles(a, crop)[0]), tele=lang.deg(lm.angles(b, crop)[0]))
+            for a, b in lm.COMMON_ZOOMS[lm.format_key(crop)]))
     same = [b for b in bodies if math.isclose(b["crop"], crop) and b["slug"] != body["slug"]]
     same_html = ", ".join('<a href="../%s/">%s</a>' % (b["slug"], e(b["display"])) for b in same)
     # The app question stays last.
-    faq = [(lang.t("body.faq_%d_q" % i, **values), lang.t("body.faq_%d_a" % i, **values)) for i in [1, 2, 4, 5, 3]]
+    # Which lens gives a 50 mm look is a non-question on full frame; the app question stays last.
+    order = [1, 6, 4, 5, 3] if full_frame else [1, 2, 6, 4, 5, 3]
+    faq = [(lang.t("body.faq_%d_q" % i, **values),
+            lang.t("body.faq_6_a_ff" if (i == 6 and full_frame) else "body.faq_%d_a" % i, **values)) for i in order]
     page_body = """<p class="crumbs"><a href="../">{cameras}</a></p>
 <h1>{h1}</h1>
 <p class="lead">{intro}</p>
 {mount}{note}
+<p class="app-line">{app_line}</p>
 <p><a class="button secondary" href="../../lens-compare/?body={slug}">{open_tool}</a></p>
 <section><h2>{frames_title}</h2>
 <figure class="nested-figure">{svg}<figcaption>{frames_caption}</figcaption></figure></section>
 <section><h2>{table_title}</h2>{table}</section>
-<section><h2>{classic_title}</h2><p>{classic_intro}</p><ul>{classic}</ul></section>
+{classic}
+{zooms}
 <section id="distances"><h2>{distance_title}</h2><p>{distance_intro}</p>{distance_table}</section>
 <section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}</section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}
 <section><h2>{same_title}</h2><p>{same}</p></section>""".format(
         cameras=lang.t("nav.cameras"), h1=lang.t("body.h1", **values), intro=intro, mount=mount, note=note,
+        app_line=lang.with_app("app.line_body", "web_body_line", **values),
         slug=body["slug"], open_tool=lang.t("body.open_tool", **values),
         frames_title=lang.t("body.frames_title", **values),
         svg=nested_frames_svg(crop), frames_caption=lang.t("body.frames_caption", **values),
         table_title=lang.t("body.table_title", **values), table=angle_table(lang, lm.TABLE_FOCAL_LENGTHS, crop),
-        classic_title=lang.t("body.classic_title", **values), classic_intro=lang.t("body.classic_intro", **values),
-        classic=classic, distance_title=lang.t("body.distance_title", **values),
+        classic=classic, zooms=zooms, distance_title=lang.t("body.distance_title", **values),
         distance_intro=lang.t("body.distance_intro", **values), distance_table=coverage_table(lang, crop),
         portrait_title=lang.t("body.portrait_title", **values),
         portrait_intro=lang.t("body.portrait_intro", **values),
@@ -735,8 +816,19 @@ def body_page(lang, body, bodies):
         cta_box=cta_box(lang, "web_body"), same_title=lang.t("body.same_format"), same=same_html)
     path = "cameras/%s/" % body["slug"]
     crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.cameras"), "cameras/"), (name, path)])
+    page_ld = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": lang.raw("body.title", **values),
+        "url": url_for(lang, path),
+        "inLanguage": lang.code,
+        "about": {"@type": "Thing", "name": name},
+        "dateModified": SITE_UPDATED,
+        "mentions": app_ref_jsonld(lang),
+        "publisher": organization_jsonld(),
+    }
     return Page(path, "body.title", lang.raw("body.description", **values), page_body,
-                jsonld=[faq_jsonld(faq), crumbs], title_values=values)
+                jsonld=[page_ld, faq_jsonld(faq), crumbs], title_values=values)
 
 
 def changelog_page(lang):
@@ -755,7 +847,7 @@ def sitemap(paths):
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">']
     for path in paths:
         for lang in ALL_LANGS:
-            out.append("<url><loc>%s</loc>" % e(url_for(lang, path)))
+            out.append("<url><loc>%s</loc><lastmod>%s</lastmod>" % (e(url_for(lang, path)), SITE_UPDATED))
             for other in ALL_LANGS:
                 out.append('<xhtml:link rel="alternate" hreflang="%s" href="%s"/>' % (other.code, e(url_for(other, path))))
             out.append("</url>")
@@ -816,6 +908,21 @@ def llms_txt(bodies):
         "what 24 to 135 mm cover at 1 to 10 m, and portrait distances (full body, head and shoulders)" % (BASE_URL, len(bodies)),
         "- [Changelog](%s/changelog/): every release" % BASE_URL,
         "- [App Store](https://apps.apple.com/app/id%s)" % APP_ID,
+        "",
+        "## Facts",
+        "",
+        "- App Store name: %s (localized: %s)" % (STORE["en"]["name"], "; ".join(sorted(
+            {v["name"] for k, v in STORE.items() if v["name"] != STORE["en"]["name"]}))),
+        "- App Store: https://apps.apple.com/app/id%s, sold by Vitalii Kikot, co-founder of nakolini" % APP_ID,
+        "- Version %s, released %s. Site updated %s" % (STORE["en"]["version"], STORE["en"]["released"], SITE_UPDATED),
+        "- Price: one-time purchase, no subscription, no in-app purchases. %s" % ", ".join(
+            "%s %s" % (v["storefront"].upper(), v["price"].replace("\u00a0", " ")) for k, v in STORE.items() if k != "ar"),
+        "- Platform: iPhone, iOS 17 or later. No Android or iPad version. Works offline; no account, no analytics, no ads",
+        "- What it does: a live viewfinder that crops the iPhone camera to the field of view of a 14 to 300 mm lens on "
+        "a chosen camera body, with 1.4x and 2x extenders and custom bodies",
+        "- What it doesn't do: depth of field, bokeh, distortion or lens rendering. Below about 13 mm equivalent the "
+        "iPhone's ultra-wide is the limit, and long focal lengths use digital zoom, so they look soft. For cinema cameras and cine lenses, a director's viewfinder such as "
+        "Artemis or Cadrage fits better",
         "",
         "## Languages",
         "",

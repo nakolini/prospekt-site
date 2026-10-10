@@ -73,6 +73,7 @@ class SiteTest(unittest.TestCase):
     def test_every_camera_page_has_distance_tables(self):
         body_pages = [p for p in pages() if re.search(r"/cameras/[^/]+/index\.html$", p)]
         self.assertEqual(len(body_pages), len(build.load_languages()) * 59)
+        crops = {b["slug"]: b["crop"] for b in build.load_bodies()}
         for path in body_pages:
             with open(path, encoding="utf-8") as f:
                 text = f.read()
@@ -85,7 +86,9 @@ class SiteTest(unittest.TestCase):
                 portraits = re.search(r'<ul class="portraits">(.*?)</ul>', text, re.S)
                 self.assertEqual(portraits.group(1).count("<li>"), len(build.lm.PORTRAIT_FOCAL_LENGTHS))
                 faq = re.search(r'"@type": "FAQPage".*?</script>', text, re.S).group(0)
-                self.assertEqual(faq.count('"@type": "Question"'), 5)
+                # Full frame skips the "what is my crop factor" question.
+                full_frame = crops[os.path.basename(os.path.dirname(path))] == 1.0
+                self.assertEqual(faq.count('"@type": "Question"'), 5 if full_frame else 6)
 
     def test_distance_numbers_on_a_full_frame_and_a_crop_body(self):
         # 85 mm full body: 2 m of frame height over 36 mm -> 4.7 m; x1.5 on APS-C -> 7.1 m.

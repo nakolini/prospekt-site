@@ -73,6 +73,13 @@ def frame_in_photo(focal, crop, photo_equivalent, photo_aspect):
 COVERAGE_FOCAL_LENGTHS = [24, 35, 50, 85, 135]
 COVERAGE_DISTANCES = [1, 2, 3, 5, 10]
 PORTRAIT_FOCAL_LENGTHS = [35, 50, 85, 135]
+# Zoom ranges common for each sensor size, as (wide, long) focal lengths.
+COMMON_ZOOMS = {
+    "full_frame": [(16, 35), (24, 70), (24, 105), (70, 200)],
+    "aps_c": [(10, 18), (18, 55), (18, 135), (55, 210)],
+    "mft": [(12, 40), (12, 60), (14, 42), (40, 150)],
+    "medium": [(32, 64), (45, 100), (100, 200)],
+}
 # A full-body portrait fits a 1.8 m person, head and shoulders about 0.5 m,
 # both with the camera held vertically and the subject filling 90% of the
 # frame height.
@@ -102,6 +109,19 @@ def distance_to_fit(subject, focal, crop, vertical=True, fill=PORTRAIT_FILL):
     w, h = sensor_size(crop)
     upright = w if vertical else h
     return subject / fill * focal / upright
+
+
+def format_key(crop):
+    """COMMON_ZOOMS key for a crop factor; Canon's 1.6x shares the APS-C zooms."""
+    if math.isclose(crop, 1.0):
+        return "full_frame"
+    if math.isclose(crop, 1.5) or math.isclose(crop, 1.6):
+        return "aps_c"
+    if math.isclose(crop, 2.0):
+        return "mft"
+    if math.isclose(crop, 0.79):
+        return "medium"
+    raise ValueError("unknown crop factor %s" % crop)
 
 
 def format_name(crop):
