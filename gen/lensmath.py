@@ -1,0 +1,96 @@
+"""Field-of-view math shared by every generated page.
+
+Mirrors the app: a body is a crop factor, and a lens on it frames like
+focal length x crop factor on full frame. assets/lens-compare.js holds the
+same formulas for the interactive tool; gen/tests/test_js_parity.py keeps
+them in step.
+"""
+
+import math
+
+FULL_FRAME_DIAGONAL = math.hypot(36.0, 24.0)
+
+TABLE_FOCAL_LENGTHS = [14, 16, 18, 20, 24, 28, 35, 40, 50, 70, 85, 100, 135, 200, 300]
+FRAME_FOCAL_LENGTHS = [24, 35, 50, 85, 135]
+CLASSIC_EQUIVALENTS = [24, 35, 50, 85, 135]
+
+
+def sensor_aspect(crop):
+    """Micro Four Thirds and 44x33 medium format are 4:3; the rest are 3:2."""
+    if math.isclose(crop, 2.0) or math.isclose(crop, 0.79):
+        return (4, 3)
+    return (3, 2)
+
+
+def sensor_size(crop):
+    """Width and height in mm, from the crop factor and the aspect ratio."""
+    aw, ah = sensor_aspect(crop)
+    diagonal = FULL_FRAME_DIAGONAL / crop
+    unit = diagonal / math.hypot(aw, ah)
+    return (aw * unit, ah * unit)
+
+
+def equivalent(focal, crop):
+    return focal * crop
+
+
+def angle_of_view(dimension_mm, focal):
+    return math.degrees(2 * math.atan(dimension_mm / (2 * focal)))
+
+
+def angles(focal, crop):
+    """Horizontal, vertical and diagonal angle of view in degrees."""
+    w, h = sensor_size(crop)
+    return (
+        angle_of_view(w, focal),
+        angle_of_view(h, focal),
+        angle_of_view(math.hypot(w, h), focal),
+    )
+
+
+def focal_for_equivalent(equivalent_focal, crop):
+    """The focal length that frames like equivalent_focal on full frame."""
+    return equivalent_focal / crop
+
+
+def frame_in_photo(focal, crop, photo_equivalent, photo_aspect):
+    """Width and height of a lens's frame as fractions of a photo.
+
+    The photo was taken at photo_equivalent (35 mm equivalent, diagonal) with
+    photo_aspect = width / height. Both images are treated as rectilinear
+    projections, so sizes compare in tangent-plane units (size / focal).
+    """
+    fw, fh = sensor_size(crop)
+    frame_half_w = fw / 2 / focal
+    frame_half_h = fh / 2 / focal
+    unit = FULL_FRAME_DIAGONAL / math.hypot(photo_aspect, 1)
+    photo_half_w = photo_aspect * unit / 2 / photo_equivalent
+    photo_half_h = unit / 2 / photo_equivalent
+    return (frame_half_w / photo_half_w, frame_half_h / photo_half_h)
+
+
+def format_name(crop):
+    if math.isclose(crop, 1.0):
+        return "full frame"
+    if math.isclose(crop, 1.5):
+        return "APS-C"
+    if math.isclose(crop, 1.6):
+        return "Canon APS-C"
+    if math.isclose(crop, 2.0):
+        return "Micro Four Thirds"
+    if math.isclose(crop, 0.79):
+        return "44 x 33 medium format"
+    raise ValueError("unknown crop factor %s" % crop)
+
+
+def crop_label(crop):
+    return ("%.2f" % crop).rstrip("0").rstrip(".") + "x"
+
+
+def mm(value):
+    """A focal length for prose: whole millimetres."""
+    return "%d mm" % round(value)
+
+
+def deg(value):
+    return "%.1f°" % value

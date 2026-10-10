@@ -1,0 +1,180 @@
+{
+  "canon-r5-ii": {
+    "mount": "Canon RF"
+  },
+  "canon-r6-iii": {
+    "mount": "Canon RF"
+  },
+  "canon-r8": {
+    "mount": "Canon RF"
+  },
+  "canon-r6-ii": {
+    "mount": "Canon RF"
+  },
+  "canon-eos-r": {
+    "mount": "Canon RF"
+  },
+  "canon-eos-5d-iv": {
+    "mount": "Canon EF"
+  },
+  "canon-eos-6d": {
+    "mount": "Canon EF"
+  },
+  "canon-eos-6d-ii": {
+    "mount": "Canon EF"
+  },
+  "canon-r7": {
+    "mount": "Canon RF"
+  },
+  "canon-r10": {
+    "mount": "Canon RF"
+  },
+  "canon-r50": {
+    "mount": "Canon RF"
+  },
+  "canon-r100": {
+    "mount": "Canon RF"
+  },
+  "canon-eos-7d-ii": {
+    "mount": "Canon EF"
+  },
+  "sony-a1": {
+    "mount": "Sony E"
+  },
+  "sony-a9-iii": {
+    "mount": "Sony E"
+  },
+  "sony-a7r-v": {
+    "mount": "Sony E"
+  },
+  "sony-a7-iv": {
+    "mount": "Sony E"
+  },
+  "sony-a7c-ii": {
+    "mount": "Sony E"
+  },
+  "sony-a6700": {
+    "mount": "Sony E"
+  },
+  "sony-a6400": {
+    "mount": "Sony E"
+  },
+  "sony-zv-e10-ii": {
+    "mount": "Sony E"
+  },
+  "nikon-z9": {
+    "mount": "Nikon Z"
+  },
+  "nikon-z8": {
+    "mount": "Nikon Z"
+  },
+  "nikon-z6-iii": {
+    "mount": "Nikon Z"
+  },
+  "nikon-z5-ii": {
+    "mount": "Nikon Z"
+  },
+  "nikon-zf": {
+    "mount": "Nikon Z"
+  },
+  "nikon-z50-ii": {
+    "mount": "Nikon Z"
+  },
+  "nikon-z50": {
+    "mount": "Nikon Z"
+  },
+  "nikon-zfc": {
+    "mount": "Nikon Z"
+  },
+  "fujifilm-gfx-100-ii": {
+    "mount": "Fujifilm G"
+  },
+  "fujifilm-gfx-100s-ii": {
+    "mount": "Fujifilm G"
+  },
+  "fujifilm-x-t5": {
+    "mount": "Fujifilm X"
+  },
+  "fujifilm-x-h2s": {
+    "mount": "Fujifilm X"
+  },
+  "fujifilm-x-h2": {
+    "mount": "Fujifilm X"
+  },
+  "fujifilm-x-s20": {
+    "mount": "Fujifilm X"
+  },
+  "fujifilm-x-t30-ii": {
+    "mount": "Fujifilm X"
+  },
+  "panasonic-s5-iix": {
+    "mount": "L-Mount"
+  },
+  "panasonic-s5-ii": {
+    "mount": "L-Mount"
+  },
+  "panasonic-s1h": {
+    "mount": "L-Mount"
+  },
+  "panasonic-gh7": {
+    "mount": "Micro Four Thirds"
+  },
+  "panasonic-gh6": {
+    "mount": "Micro Four Thirds"
+  },
+  "panasonic-g9-ii": {
+    "mount": "Micro Four Thirds"
+  },
+  "om-system-om-1-ii": {
+    "mount": "Micro Four Thirds"
+  },
+  "om-system-om-1": {
+    "mount": "Micro Four Thirds"
+  },
+  "om-system-om-5": {
+    "mount": "Micro Four Thirds"
+  },
+  "leica-m11": {
+    "mount": "Leica M"
+  },
+  "leica-sl3": {
+    "mount": "L-Mount"
+  },
+  "leica-q3": {
+    "mount": null,
+    "note_key": "body.note_leica_q3"
+  },
+  "leica-cl": {
+    "mount": "L-Mount"
+  },
+  "leica-tl2": {
+    "mount": "L-Mount"
+  },
+  "hasselblad-x2d": {
+    "mount": "Hasselblad XCD"
+  },
+  "hasselblad-x1d-ii": {
+    "mount": "Hasselblad XCD"
+  },
+  "hasselblad-907x": {
+    "mount": "Hasselblad XCD"
+  },
+  "pentax-k-1-iii": {
+    "mount": "Pentax K"
+  },
+  "pentax-k-1-ii": {
+    "mount": "Pentax K"
+  },
+  "pentax-k-3-iii": {
+    "mount": "Pentax K"
+  },
+  "pentax-kf": {
+    "mount": "Pentax K"
+  },
+  "sigma-fp-l": {
+    "mount": "L-Mount"
+  },
+  "sigma-fp": {
+    "mount": "L-Mount"
+  }
+}
