@@ -6,6 +6,8 @@
   --muted: #a8a8a8;
   --gold: #f0bf40;
   --gold-ink: #1a1a1a;
+  /* The second camera in the tool: magenta reads on photos and on the dark page, and is far from gold. */
+  --second: #ff6bd6;
   --radius: 12px;
   color-scheme: dark;
 }
@@ -87,6 +89,15 @@ svg.frames, svg.nested { direction: ltr; }
 svg.frames rect { fill: none; stroke: var(--gold); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
 svg.frames rect.active { stroke: #fff; stroke-width: 3.5; }
 svg.frames text { fill: var(--gold); font-size: 22px; font-weight: 700; paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 4px; }
+svg.frames rect.b2 { stroke: var(--second); stroke-dasharray: 10 6; }
+svg.frames rect.b2.active { stroke: #fff; }
+svg.frames text.b2 { fill: var(--second); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 10px 0 0; font-size: 0.92rem; }
+.legend > span { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { display: inline-block; width: 18px; height: 0; border-top: 3px solid var(--gold); vertical-align: middle; margin-inline-end: 8px; }
+.legend .swatch { margin: 0; }
+.swatch.b2 { border-top: 3px dashed var(--second); }
 
 .nested-figure svg { width: 100%; height: auto; max-width: 640px; display: block; background: var(--surface); border-radius: var(--radius); }
 svg.nested rect { fill: none; stroke: var(--gold); stroke-width: 2; }
@@ -102,6 +113,10 @@ table.angles tbody tr.clickable { cursor: pointer; }
 table.angles tbody tr.clickable:hover, table.angles tbody tr.selected { background: var(--surface); }
 table.compare td, table.compare th { min-width: 120px; }
 table.price { width: auto; }
+table.angles tr.group th { color: var(--text); background: transparent; padding-top: 14px; }
+table.angles tbody + tbody tr.group th { border-top: 1px solid var(--line); }
+.zoom-tag { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+table.angles td, table.distances td { white-space: nowrap; }
 
 .faq h3 { color: var(--text); }
 
@@ -128,6 +143,21 @@ input[type="file"] { color: var(--muted); margin-block: 6px; max-width: 100%; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .chip { padding: 6px 12px; font-weight: 600; font-size: 0.95rem; border-radius: 999px; min-width: 3.2em; }
 .chip[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
+.sublabel { margin: 14px 0 6px; color: var(--muted); font-size: 0.92rem; }
+.inline-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.range { display: inline-flex; align-items: center; gap: 6px; }
+.range input[type="number"] { width: 5em; }
+.field { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-top: 4px; }
+.with-unit { display: inline-flex; align-items: center; gap: 6px; }
+.segmented { display: inline-flex; flex-wrap: wrap; margin: 8px 0 12px; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.controls .segmented label { display: inline-flex; align-items: center; margin: 0; padding: 4px 12px; border-radius: 999px; cursor: pointer; font-size: 0.95rem; }
+.segmented input { margin: 0 6px 0 0; }
+@supports selector(:has(*)) {
+  .segmented { position: relative; }
+  .segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+  .segmented label:has(input:checked) { background: var(--gold); color: var(--gold-ink); font-weight: 600; }
+  .segmented label:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
+}
 .preview canvas { width: 100%; height: auto; border-radius: var(--radius); background: #000; }
 
 .site-footer { border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; padding-block: 20px 32px; }
@@ -136,7 +166,7 @@ input[type="file"] { color: var(--muted); margin-block: 6px; max-width: 100%; }
 
 @media (min-width: 760px) {
   .controls { grid-template-columns: 1fr 1fr; align-items: start; }
-  .controls > label { grid-column: 1 / -1; }
+  .controls > fieldset.wide { grid-column: 1 / -1; }
 }
 
 @media (max-width: 600px) {

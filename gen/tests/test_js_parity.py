@@ -32,6 +32,25 @@ class JsParityTest(unittest.TestCase):
                 self.assertAlmostEqual(a, b, places=9)
 
 
+DISTANCE_SCRIPT = """
+const m = require(%s);
+const cases = %s;
+console.log(JSON.stringify(cases.map(([f, c, d, v, fill]) => [m.coverage(f, c, d), m.distanceToFit(d, f, c, v, fill)])));
+"""
+DISTANCE_CASES = [(f, c, d, v, fill) for f in [14, 35, 85, 135, 600] for c in [0.79, 1.0, 1.5, 1.6, 2.0]
+                  for d in [0.5, 1.8, 3, 32.8] for v in [True, False] for fill in [0.9, 1.0]]
+
+
+@unittest.skipUnless(shutil.which("node"), "node not installed")
+class JsDistanceParityTest(unittest.TestCase):
+    def test_js_distance_math_matches_python(self):
+        out = subprocess.check_output(["node", "-e", DISTANCE_SCRIPT % (json.dumps(JS), json.dumps(DISTANCE_CASES))])
+        for (focal, crop, d, vertical, fill), (cover, fit) in zip(DISTANCE_CASES, json.loads(out)):
+            for a, b in zip(cover, lm.coverage(focal, crop, d)):
+                self.assertAlmostEqual(a, b, places=9)
+            self.assertAlmostEqual(fit, lm.distance_to_fit(d, focal, crop, vertical, fill), places=9)
+
+
 if __name__ == "__main__":
     unittest.main()
 
