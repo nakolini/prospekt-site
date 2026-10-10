@@ -60,7 +60,6 @@ LANGUAGES = [
     ("nl", "nl", "Nederlands"),
     ("pl", "pl", "Polski"),
     ("pt-BR", "pt-br", "Português (Brasil)"),
-    ("ru", "ru", "Русский"),
     ("tr", "tr", "Türkçe"),
     ("uk", "uk", "Українська"),
     ("zh-Hans", "zh-hans", "简体中文"),
@@ -70,7 +69,7 @@ RTL = {"ar"}
 # Numbers with a unit inside translated sentences ("50 mm", "1.8 m", "1.4x", "f/1.4"),
 # isolated on right-to-left pages like the generated ones.
 MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|m|ft|x|°)(?!\w))?(?:\s?(?:-|to)\s?\d+(?:\s?mm)?)?")
-DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "ru", "tr", "uk"}
+DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "tr", "uk"}
 
 # Generated paths, removed before each build so stale pages never linger.
 GENERATED_DIRS = ["lens-compare", "cameras", "changelog"] + [s for _, s, _ in LANGUAGES if s]

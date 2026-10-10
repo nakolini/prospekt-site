@@ -2,7 +2,7 @@
 
 The website for [Prospekt](https://apps.apple.com/app/id6760914468), the iPhone lens simulator, served by GitHub Pages from `main`.
 
-It has four kinds of pages, in 16 languages (the app's own), all plain HTML that reads fine without JavaScript:
+It has four kinds of pages, in 15 languages (the app's own, without Russian), all plain HTML that reads fine without JavaScript:
 
 - `/`: what the app does, price, privacy, limits, an honest comparison, FAQ.
 - `/lens-compare/`: a free lens comparison tool. Pick a body (and optionally a second one), focal lengths or zooms, and see the frames over a photo (a sample, or your own; it never leaves the browser), with what each lens covers at a subject distance and how far to stand to fit a subject. Links are shareable: `/lens-compare/?body=fujifilm-x-t5&f=23,33,56&d=3&u=m`.
