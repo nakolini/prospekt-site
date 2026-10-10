@@ -67,9 +67,9 @@ LANGUAGES = [
     ("zh-Hant", "zh-hant", "繁體中文"),
 ]
 RTL = {"ar"}
-# Numbers with a unit inside translated sentences ("50 mm", "1.4x", "f/1.4"),
+# Numbers with a unit inside translated sentences ("50 mm", "1.8 m", "1.4x", "f/1.4"),
 # isolated on right-to-left pages like the generated ones.
-MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|x|°))?(?:\s?(?:-|to)\s?\d+(?:\s?mm)?)?")
+MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|m|ft|x|°)(?!\w))?(?:\s?(?:-|to)\s?\d+(?:\s?mm)?)?")
 DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "ru", "tr", "uk"}
 
 # Generated paths, removed before each build so stale pages never linger.
