@@ -4,12 +4,12 @@
 
 ## Pages
 
-- [Prospekt for iPhone](https://nakolini.github.io/prospekt-site/): what it does, price, privacy, limits, comparison, FAQ
-- [Lens comparison tool](https://nakolini.github.io/prospekt-site/lens-compare/): free web tool, frames of any focal lengths on any body over a photo
-- [Cameras](https://nakolini.github.io/prospekt-site/cameras/): focal length, full-frame equivalent and angle of view tables for 59 camera bodies
-- [Changelog](https://nakolini.github.io/prospekt-site/changelog/): every release
+- [Prospekt for iPhone](https://prospekt.nakolini.com/): what it does, price, privacy, limits, comparison, FAQ
+- [Lens comparison tool](https://prospekt.nakolini.com/lens-compare/): free web tool, frames of any focal lengths on any body over a photo
+- [Cameras](https://prospekt.nakolini.com/cameras/): focal length, full-frame equivalent and angle of view tables for 59 camera bodies
+- [Changelog](https://prospekt.nakolini.com/changelog/): every release
 - [App Store](https://apps.apple.com/app/id6760914468)
 
 ## Languages
 
-Every page is available in: English (https://nakolini.github.io/prospekt-site/), العربية (https://nakolini.github.io/prospekt-site/ar/), Deutsch (https://nakolini.github.io/prospekt-site/de/), Español (https://nakolini.github.io/prospekt-site/es/), Français (https://nakolini.github.io/prospekt-site/fr/), Italiano (https://nakolini.github.io/prospekt-site/it/), 日本語 (https://nakolini.github.io/prospekt-site/ja/), 한국어 (https://nakolini.github.io/prospekt-site/ko/), Nederlands (https://nakolini.github.io/prospekt-site/nl/), Polski (https://nakolini.github.io/prospekt-site/pl/), Português (Brasil) (https://nakolini.github.io/prospekt-site/pt-br/), Русский (https://nakolini.github.io/prospekt-site/ru/), Türkçe (https://nakolini.github.io/prospekt-site/tr/), Українська (https://nakolini.github.io/prospekt-site/uk/), 简体中文 (https://nakolini.github.io/prospekt-site/zh-hans/), 繁體中文 (https://nakolini.github.io/prospekt-site/zh-hant/).
+Every page is available in: English (https://prospekt.nakolini.com/), العربية (https://prospekt.nakolini.com/ar/), Deutsch (https://prospekt.nakolini.com/de/), Español (https://prospekt.nakolini.com/es/), Français (https://prospekt.nakolini.com/fr/), Italiano (https://prospekt.nakolini.com/it/), 日本語 (https://prospekt.nakolini.com/ja/), 한국어 (https://prospekt.nakolini.com/ko/), Nederlands (https://prospekt.nakolini.com/nl/), Polski (https://prospekt.nakolini.com/pl/), Português (Brasil) (https://prospekt.nakolini.com/pt-br/), Русский (https://prospekt.nakolini.com/ru/), Türkçe (https://prospekt.nakolini.com/tr/), Українська (https://prospekt.nakolini.com/uk/), 简体中文 (https://prospekt.nakolini.com/zh-hans/), 繁體中文 (https://prospekt.nakolini.com/zh-hant/).
