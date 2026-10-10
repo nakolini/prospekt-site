@@ -123,7 +123,10 @@ class Lang:
         return template.format(**values)
 
     def num(self, value, decimals=1):
-        text = "%.*f" % (decimals, value)
+        # Python 3.10+ has a correctly rounded math.hypot, so a value such as
+        # 22.5 / 50 can land a hair either side of 0.45 depending on the
+        # version. Rounding to 9 places first gives the same text on all of them.
+        text = "%.*f" % (decimals, round(value, 9))
         return text.replace(".", ",") if self.code in DECIMAL_COMMA else text
 
     def isolate(self, text):
@@ -268,9 +271,9 @@ def header(lang, root, path):
         langname=e(lang.name), switch=switch)
 
 
-def footer(lang, root, photo_credit):
+def footer(lang, root, credit_keys):
     home = root + lang.prefix
-    credit = '<p class="credit">%s</p>' % lang.t("footer.photo_credit") if photo_credit else ""
+    credit = "".join('<p class="credit">%s</p>' % lang.t(k) for k in credit_keys)
     return """<footer class="site-footer"><div class="wrap">
 <p>{made} <a href="{threads}" rel="me">Threads</a></p>
 <p>{also} <a href="{anonimo}">{anonimo_t}</a> · <a href="{expenny}">{expenny_t}</a></p>
@@ -295,7 +298,8 @@ def render(lang, page):
     jsonld = "".join(
         '<script type="application/ld+json">%s</script>\n' % json.dumps(block, ensure_ascii=False).replace("</", "<\\/")
         for block in page.jsonld)
-    uses_photo = "sample-14mm" in page.body
+    # Credit every sample photo the page shows or offers.
+    credits = [s["credit_key"] for s in SAMPLES if s["src"] in page.body or s["small"] in page.body]
     return """<!doctype html>
 <html lang="{code}" dir="{dir}">
 <head>
@@ -327,7 +331,7 @@ def render(lang, page):
         canonical=e(canonical), alternates=alternates, og_image=e(BASE_URL + "/" + SAMPLE["small"]),
         app_id=APP_ID, root=root, extra_head=page.extra_head, jsonld=jsonld,
         header=header(lang, root, page.path), body=page.body.replace("{root}", root),
-        footer=footer(lang, root, uses_photo), scripts=page.scripts.replace("{root}", root))
+        footer=footer(lang, root, credits), scripts=page.scripts.replace("{root}", root))
 
 
 def cta_box(lang, campaign):
