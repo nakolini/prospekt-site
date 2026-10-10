@@ -166,11 +166,12 @@
     photoFocal: data.samples[0].focal,
     selected: null,
     ownUrl: null,
-    // The person scene instead of a photo, aimed at the body or the head;
-    // fit is the last "Fit" action, so its lens view can say what it picked.
+    // The person scene instead of a photo; fit is the last "Fit" action, so
+    // its lens view can say what it picked, and fitAdded the chip each kind
+    // of Fit added, so the next one replaces it.
     scene: false,
-    aim: "body",
     fit: null,
+    fitAdded: {},
   };
 
   // Numbers the page's way ("1,200.5", "1.200,5", "1 200,5"), always in Latin digits like the rest of the site.
@@ -315,6 +316,12 @@
     defs.appendChild(g);
   }
 
+  // Scene units (1000 across) per unit of height at 1 unit of distance.
+  function sceneScale(focal, aspect) {
+    var unit = FULL_FRAME_DIAGONAL / Math.hypot(aspect, 1);
+    return (1000 / 2) / ((aspect * unit) / 2 / focal);
+  }
+
   // A level camera at eye level, a floor of 1 m tiles running to the horizon
   // and a figure of the subject height at the subject distance. Everything is
   // projected like the photos (size / distance x focal), with the view shifted
@@ -324,8 +331,7 @@
   // eye and tile (in the unit of distance), aim (height of the middle), id.
   function drawScene(svg, o) {
     var w = 1000, h = w / o.aspect;
-    var unit = FULL_FRAME_DIAGONAL / Math.hypot(o.aspect, 1);
-    var k = (w / 2) / ((o.aspect * unit) / 2 / o.focal);
+    var k = sceneScale(o.focal, o.aspect);
     var shift = (o.aim - o.eye) / o.distance;
     function sy(height, distance) { return h / 2 - ((height - o.eye) / distance - shift) * k; }
     var horizon = h / 2 + shift * k;
@@ -392,7 +398,7 @@
 
   // Put a frame's label in the first corner where it clears the labels already
   // drawn and stays inside the photo, trying the label without its zoom names
-  // next; if nothing fits, where it overlaps least (or nowhere on phones).
+  // next; if nothing fits, nowhere.
   function placeLabel(svg, item, placed, w, h) {
     var label = svgEl("text", { class: item.cls });
     svg.appendChild(label);
@@ -423,9 +429,9 @@
       if (!best || cost < best.cost) best = { cost: cost, text: text, x: label.getAttribute("x"), y: baseline, right: right, rect: rect };
       if (cost === 0) break;
     }
-    // On a phone a label that would cover another one is left out; tapping
-    // the frame or its table row still names it.
-    if (best.cost > 0 && window.matchMedia("(max-width: 600px)").matches) { label.remove(); return; }
+    // A label that would cover another one is left out; tapping the frame or
+    // its table row still names it.
+    if (best.cost > 0) { label.remove(); return; }
     label.textContent = best.text;
     label.setAttribute("x", best.x);
     label.setAttribute("y", best.y);
@@ -444,10 +450,14 @@
   function inUnit(metres) { return state.unit === "ft" ? metres / FOOT : metres; }
   function toMetres(value) { return state.unit === "ft" ? value * FOOT : value; }
 
-  // The height the person scene is aimed at: the middle of the body, or of
-  // the head and shoulders.
-  function aimHeight() {
-    return state.aim === "head" ? state.subject * (1 - data.head / 2) : state.subject / 2;
+  // Each lens in the person scene is aimed like a portrait through it: a
+  // frame shorter than the person keeps the top of the head where a fitted
+  // frame has it, so a tight lens shows the head and shoulders, not the
+  // waist; a taller frame is centred on the body.
+  function aimHeight(focal, crop) {
+    var s = sensorSize(crop);
+    var tall = ((state.vertical ? s[0] : s[1]) / focal) * state.distance;
+    return Math.max(state.subject / 2, state.subject + ((1 - data.fill) / 2) * tall - tall / 2);
   }
 
   function widestOf(frames) {
@@ -506,10 +516,6 @@
       var sceneFocal = allWidest ? 0.85 / allWidest : 24;
       frames.forEach(function (fr) { fr.f = [fr.f[0] * sceneFocal, fr.f[1] * sceneFocal]; });
       allWidest = widestOf(frames);
-      drawScene(scene, {
-        focal: sceneFocal, aspect: aspect, distance: state.distance, height: state.subject,
-        eye: inUnit(data.eye), tile: inUnit(1), aim: aimHeight(), id: "scene",
-      });
     }
     photo.hidden = state.scene;
     scene.toggleAttribute("hidden", !state.scene);
@@ -525,10 +531,24 @@
     var target = lens ? 0.94 : 0.85;
     var zoom = 1;
     if (widest > 1.0001) zoom = Math.max(0.05, target / widest);
-    else if (widest) zoom = Math.max(1, Math.min(lens ? (state.scene ? 200 : 12) : 4, target / widest));
-    var surface = state.scene ? scene : photo;
-    (state.scene ? photo : scene).style.transform = "";
-    surface.style.transform = zoom !== 1 ? "scale(" + zoom + ")" : "";
+    else if (widest) zoom = Math.max(1, state.scene ? target / widest : Math.min(lens ? 12 : 4, target / widest));
+    // The scene is redrawn at the zoomed focal length rather than scaled, so a
+    // long lens stays sharp. It's aimed for the outermost frame; the others
+    // sit at their own aim, higher or lower.
+    var perHeight = 0, sceneAim = 0;
+    if (state.scene) {
+      var outer = frames.reduce(function (m, fr) {
+        return !m || Math.max(fr.f[0], fr.f[1]) > Math.max(m.f[0], m.f[1]) ? fr : m;
+      }, null);
+      sceneAim = outer ? aimHeight(outer.focal, outer.cam.crop) : state.subject / 2;
+      perHeight = sceneScale(sceneFocal * zoom, aspect) / state.distance;
+      drawScene(scene, {
+        focal: sceneFocal * zoom, aspect: aspect, distance: state.distance, height: state.subject,
+        eye: inUnit(data.eye), tile: inUnit(1), aim: sceneAim, id: "scene",
+      });
+    }
+    scene.style.transform = "";
+    photo.style.transform = !state.scene && zoom !== 1 ? "scale(" + zoom + ")" : "";
     // The photo eases to its new zoom (site.css); the frames fade in once it's there.
     if (Math.abs(zoom - lastZoom) > 0.001) svg.classList.add("settle");
     lastZoom = zoom;
@@ -559,6 +579,7 @@
       var f = [fr.f[0] * zoom, fr.f[1] * zoom];
       drawn[cam.slot] = drawn[cam.slot] || 0;
       var x = ((1 - f[0]) * w) / 2, y = ((1 - f[1]) * h) / 2;
+      if (state.scene) y -= (aimHeight(focal, cam.crop) - sceneAim) * perHeight;
       var classes = ["b" + (cam.slot + 1)];
       if (lens) {
         svg.appendChild(svgEl("path", {
@@ -679,7 +700,9 @@
     var cams = cameras();
     var cam = cams.filter(function (c) { return String(c.slot) === parts[1]; })[0];
     var lensView = cam && stage.classList.contains("lens");
-    var fitted = lensView && state.scene && state.fit && cam.slot === 0 && parseFloat(parts[0]) === fitFocal(state.fit);
+    // At the 4 and 1200 mm limits the lens doesn't fit the person as asked, so it isn't called a fit.
+    var fitted = lensView && state.scene && state.fit && cam.slot === 0 && parseFloat(parts[0]) === fitFocal(state.fit) &&
+      fitFocal(state.fit) === fitFocal(state.fit, true);
     var hint = fitted
       ? fill(strings["tool.fit_" + state.fit + "_result"], {
         distance: typed(state.distance), focal: mm(parseFloat(parts[0])), equiv: mm(parseFloat(parts[0]) * cam.crop),
@@ -708,7 +731,7 @@
     if (state.zooms.length) query += "&z=" + state.zooms.map(zoomName).join(",");
     query += "&d=" + state.distance + "&u=" + state.unit + "&h=" + state.subject + "&o=" + (state.vertical ? "v" : "h");
     // The visitor's own photo stays in the browser, so the link opens on the first sample.
-    if (state.scene) query += "&s=person" + (state.aim === "head" ? "&aim=head" : "");
+    if (state.scene) query += "&s=person";
     else if (state.sample && !showingOwn()) query += "&s=" + state.sample;
     history.replaceState(null, "", location.pathname + query);
   }
@@ -772,7 +795,6 @@
     var s = parseInt(params.get("s"), 10);
     if (s > 0 && s < data.samples.length) state.sample = s;
     if (params.get("s") === "person") state.scene = true;
-    if (params.get("aim") === "head") state.aim = "head";
   }
 
   function pick(focal) {
@@ -926,11 +948,12 @@
 
   // The focal length on the first camera that fits the whole person, or the
   // head and shoulders, in 90% of the frame height at the subject distance.
-  function fitFocal(kind) {
+  // unclamped: past the 4 to 1200 mm the tool takes.
+  function fitFocal(kind, unclamped) {
     var crop = cameras()[0].crop;
     var subject = kind === "head" ? state.subject * data.head : state.subject;
     var focal = Math.round(focalToFit(subject, state.distance, crop, state.vertical, data.fill));
-    return Math.min(1200, Math.max(4, focal));
+    return unclamped ? focal : Math.min(1200, Math.max(4, focal));
   }
 
   sceneActions.addEventListener("click", function (event) {
@@ -938,8 +961,13 @@
     if (!button) return;
     var kind = button.getAttribute("data-fit");
     var focal = fitFocal(kind);
+    // A new fit replaces the chip the last one of its kind added.
+    var previous = state.fitAdded[kind];
+    if (previous && previous !== focal && state.focals.indexOf(previous) >= 0 &&
+        previous !== state.fitAdded[kind === "head" ? "body" : "head"]) toggleFocal(previous);
+    state.fitAdded[kind] = state.focals.indexOf(focal) < 0 ? focal : null;
     pick(focal);
-    state.aim = state.fit = kind;
+    state.fit = kind;
     state.selected = key(focal, 0);
     render();
     revealStage();
@@ -974,8 +1002,10 @@
     var k = state.selected, focused = document.activeElement === lensBack;
     state.selected = null;
     render();
-    // The button hides with the lens view; the focus goes to that lens's row.
-    var row = results.querySelector('button[data-key="' + k + '"]');
+    // The button hides with the lens view; the focus goes back to the Fit
+    // button that opened it, or else to that lens's row.
+    var fit = state.fit && k === key(fitFocal(state.fit), 0) && sceneActions.querySelector('[data-fit="' + state.fit + '"]');
+    var row = fit || results.querySelector('button[data-key="' + k + '"]');
     if (focused && row) row.focus({ preventScroll: true });
   });
   document.addEventListener("keydown", function (event) {
