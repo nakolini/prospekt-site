@@ -1086,10 +1086,12 @@ def guide_values(lang):
 
 
 def recs_table(lang, guide):
-    """Each full-frame recommendation and the lens that frames about the same on smaller sensors."""
+    """Each full-frame recommendation, what it's best for, and the lens that frames about the
+    same on smaller sensors. "Best for" comes second so phones show it without scrolling."""
     key = guide_key(guide)
-    head = "".join('<th scope="col">%s<br><span class="muted">%s</span></th>' % (
-        e(lang.format_name(c)), lang.crop(c)) for c in FORMAT_CROPS)
+    formats = ['<th scope="col">%s<br><span class="muted">%s</span></th>' % (
+        e(lang.format_name(c)), lang.crop(c)) for c in FORMAT_CROPS]
+    head = formats[0] + '<th scope="col">%s</th>' % lang.t("guide.col_use") + "".join(formats[1:])
     rows = []
     for f in guide["recs"]:
         cells = []
@@ -1101,10 +1103,10 @@ def recs_table(lang, guide):
                 cell += '<br><span class="muted">%s</span>' % lang.t("guide.cell_equiv",
                                                                      equiv=lang.mm(lm.equivalent(lens, crop)))
             cells.append("<td>%s</td>" % cell)
-        rows.append('<tr><th scope="row">%s</th>%s<td class="use">%s</td></tr>' % (
-            lang.mm(f), "".join(cells), lang.t("%s_use_%d" % (key, f))))
-    return ('<div class="scroll"><table class="recs"><thead><tr>%s<th scope="col">%s</th></tr></thead>'
-            "<tbody>%s</tbody></table></div>") % (head, lang.t("guide.col_use"), "".join(rows))
+        rows.append('<tr><th scope="row">%s</th><td class="use">%s</td>%s</tr>' % (
+            lang.mm(f), lang.t("%s_use_%d" % (key, f)), "".join(cells)))
+    return ('<div class="scroll"><table class="recs"><thead><tr>%s</tr></thead>'
+            "<tbody>%s</tbody></table></div>") % (head, "".join(rows))
 
 
 def guide_page(lang, guide, values):
