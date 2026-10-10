@@ -2,12 +2,15 @@
 
 The website for [Prospekt](https://apps.apple.com/app/id6760914468), the iPhone lens simulator, live at **https://prospekt.nakolini.com** and served by GitHub Pages from `main`.
 
-It has four kinds of pages, in 15 languages (the app's own, without Russian), all plain HTML that reads fine without JavaScript:
+It has five kinds of pages, in 15 languages (the app's own, without Russian), all plain HTML that reads fine without JavaScript:
 
 - `/`: what the app does, price, privacy, limits, an honest comparison, FAQ.
 - `/lens-compare/`: a free lens comparison tool. Pick a body (and optionally a second one), focal lengths or zooms, and see the frames over a photo (a sample, or your own; it never leaves the browser) or over a standing person drawn to scale, with what each lens covers at a subject distance and how far to stand to fit a subject. Links are shareable: `/lens-compare/?body=fujifilm-x-t5&f=23,33,56&d=3&u=m`.
 - `/cameras/` and `/cameras/<body>/`: focal length, full-frame equivalent and angle-of-view tables for every body in the app, plus what 24-135 mm cover at 1-10 m and portrait distances.
+- `/guides/`, `/compare/<a>mm-vs-<b>mm/` and `/focal-length/<use>/`: question-shaped pages ("35 mm or 50 mm?", "best focal length for portraits") that answer first, then give the numbers for full frame, APS-C and Micro Four Thirds, the trade-offs and a link to the tool with those focal lengths. The pairs and uses are `COMPARISONS` and `GUIDES` in `gen/build.py`; their copy is the `compare.*`, `guide.*` and `guides.*` keys.
 - `/changelog/`: every release.
+
+`404.html` is the page GitHub Pages serves for any missing path. It's English only, kept out of search (`noindex`), and its links start at the site root (`/cameras/`) because it can be served at any depth.
 
 English is at the root, other languages under `/<lang>/` (`/de/`, `/pt-br/`, `/zh-hans/`...), linked with hreflang.
 
@@ -37,7 +40,8 @@ Python 3.9+ standard library only. No dependencies.
 
 - **New camera in the app:** `make bodies`, add its mount to `data/mounts.json`, `make build`.
 - **New app version:** add the notes to `CHANGELOG` in `gen/build.py` and the strings to every `i18n/*.json`.
-- **Copy change:** edit `i18n/en.json`, then update the same key in every other language.
+- **Copy change:** edit `i18n/en.json`, then update the same key in every other language. A key missing from a language falls back to English in the build, but the i18n tests fail until it's translated.
+- **New comparison or guide:** add it to `COMPARISONS` or `GUIDES` in `gen/build.py` and its strings to `i18n/*.json` (`compare.<a>_<b>_answer` and `_choose_<n>`, or `guide.<slug>_name`, `_h1`, `_answer`, `_why_1-3`, `_use_<focal>`, `_faq_1-3_q/_a`).
 - **Domain:** the site is served at `https://prospekt.nakolini.com` (Cloudflare CNAME `prospekt` → `nakolini.github.io`, DNS only). `BASE_URL` in `gen/build.py` drives canonical URLs, hreflang, the sitemap and the generated `CNAME` file; GitHub redirects the old `nakolini.github.io/prospekt-site/` URLs there.
 - **Search engines:** after a deploy that adds or renames pages, run `python3 scripts/indexnow.py` to notify Bing, Yandex, Seznam and Naver (the `<key>.txt` file at the root proves ownership). Google reads `sitemap.xml` from `robots.txt`; submit it once in Search Console.
 

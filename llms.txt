@@ -10,6 +10,21 @@
 - [Changelog](https://prospekt.nakolini.com/changelog/): every release
 - [App Store](https://apps.apple.com/app/id6760914468)
 
+## Guides
+
+- [Focal length guides](https://prospekt.nakolini.com/guides/): Short answers to common lens questions, with numbers: 35 mm or 50 mm, 50 or 85, and the best focal length for portraits, street, landscapes, travel, interiors and wildlife on every sensor size.
+- [24 mm vs 35 mm](https://prospekt.nakolini.com/compare/24mm-vs-35mm/): 24 mm is wider and suits landscapes, interiors and big scenes up close. 35 mm is tighter and more natural, and suits streets, travel and people in their surroundings.
+- [28 mm vs 35 mm](https://prospekt.nakolini.com/compare/28mm-vs-35mm/): 28 mm is a little wider and suits tight streets, crowds and small rooms. 35 mm is a little tighter and suits people, travel and everyday photos, with less stretching at the edges.
+- [35 mm vs 50 mm](https://prospekt.nakolini.com/compare/35mm-vs-50mm/): 35 mm is wider and suits streets, travel and rooms. 50 mm is tighter and suits portraits and details.
+- [50 mm vs 85 mm](https://prospekt.nakolini.com/compare/50mm-vs-85mm/): 50 mm is the more flexible lens: half-body and full-body portraits, small rooms and everyday photos. 85 mm is the classic portrait lens: head and shoulders, flattering faces and a simple background.
+- [85 mm vs 135 mm](https://prospekt.nakolini.com/compare/85mm-vs-135mm/): 85 mm is the all-round portrait lens and works indoors and out. 135 mm is tighter, needs more room, and gives the simplest background for headshots and outdoor portraits.
+- [Best focal length for portraits](https://prospekt.nakolini.com/focal-length/portraits/): For portraits, 85 mm on full frame is the classic: flattering faces and a simple background. On APS-C, 56 mm frames about the same, and on Micro Four Thirds, 42.5 mm.
+- [Best focal length for street photography](https://prospekt.nakolini.com/focal-length/street/): For street photography, 35 mm on full frame is the most common choice. 28 mm is wider for crowds and narrow streets, and 50 mm keeps more distance. On APS-C, 23 mm frames like 35 mm, and on Micro Four Thirds, 17 mm.
+- [Best focal length for landscape photography](https://prospekt.nakolini.com/focal-length/landscape/): For landscapes, 24 mm on full frame is the most used wide focal length, 16 mm suits dramatic foregrounds, and 70 mm or longer picks out distant hills and layers. On APS-C, 16 mm frames like 24 mm, and on Micro Four Thirds, 12 mm.
+- [Best focal length for travel photography](https://prospekt.nakolini.com/focal-length/travel/): For travel, a 24-70 or 24-105 mm zoom on full frame covers most trips. If you carry one prime, 35 mm is the most versatile: 23 mm on APS-C, 17 mm on Micro Four Thirds.
+- [Best focal length for interiors and real estate](https://prospekt.nakolini.com/focal-length/interiors/): For interiors and real estate, 16 to 24 mm on full frame shows a whole room without the stretched look of anything wider. On APS-C, that's about 10 mm to 16 mm, and on Micro Four Thirds, 8 mm to 12 mm.
+- [Best focal length for sports and wildlife](https://prospekt.nakolini.com/focal-length/sports-wildlife/): For sports and wildlife, start at 300 to 400 mm on full frame; small birds need 600 mm. A smaller sensor helps: a 400 mm lens on APS-C frames like 600 mm, and a 300 mm lens on Micro Four Thirds like 600 mm.
+
 ## Facts
 
 - App Store name: Lens Simulator: Prospekt (localized: Lenssimulator: Prospekt; Objektivsimulator: Prospekt; Simulador Objetivos: Prospekt; Simulador de Lentes: Prospekt; Simulateur Objectif: Prospekt; Simulatore Obiettivi: Prospekt; レンズシミュレーター: Prospekt; 鏡頭模擬器: Prospekt; 镜头模拟器: Prospekt; 렌즈 시뮬레이터: Prospekt)

@@ -113,5 +113,17 @@ class LensMathTest(unittest.TestCase):
         self.assertAlmostEqual(vh, h * 36 / 24)
 
 
+    def test_real_focal_names_a_lens_you_can_buy(self):
+        # 85 / 1.5 = 56.7 -> the 56 mm lens; 85 / 2 = 42.5 exactly; 35 / 1.6 = 21.9 -> 23 mm.
+        self.assertEqual(lm.real_focal(85, 1.5), 56)
+        self.assertEqual(lm.real_focal(85, 2.0), 42.5)
+        self.assertEqual(lm.real_focal(35, 1.6), 23)
+        # Nothing close: 135 / 2 = 67.5 sits between 60 and 75, and long lenses are zooms.
+        self.assertAlmostEqual(lm.real_focal(135, 2.0), 67.5)
+        self.assertAlmostEqual(lm.real_focal(400, 1.5), 266.67, places=2)
+        # Full frame recommendations are real lenses already.
+        self.assertEqual(lm.real_focal(85, 1.0), 85)
+
+
 if __name__ == "__main__":
     unittest.main()

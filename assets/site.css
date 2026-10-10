@@ -124,6 +124,22 @@ table.angles td, table.distances td, table.equiv td { white-space: nowrap; }
 
 .faq h3 { color: var(--text); }
 
+/* Guides: link lists, the hub's one-line answers, the comparison and recommendation tables. */
+ul.links { padding-inline-start: 1.2em; }
+ul.links li { margin-block: 0.3em; break-inside: avoid; }
+@media (min-width: 700px) { ul.links.cols { columns: 2; column-gap: 32px; } }
+ul.guide-list { list-style: none; padding: 0; margin: 0; }
+ul.guide-list li { padding-block: 12px; border-bottom: 1px solid var(--line); }
+ul.guide-list li:first-child { padding-top: 0; }
+ul.guide-list a { font-weight: 600; }
+ul.guide-list .summary { display: block; color: var(--muted); font-size: 0.95rem; margin-top: 2px; }
+ul.choose { padding-inline-start: 1.2em; }
+ul.choose li { margin-block: 0.5em; }
+table.pair tr.group th { color: var(--text); padding-top: 16px; }
+table.pair tbody:first-of-type tr.group th { padding-top: 8px; }
+table.pair td, table.recs td { white-space: nowrap; }
+table.recs td.use { white-space: normal; min-width: 11em; }
+
 .cta-box {
   margin-top: 40px; padding: 20px 22px; border: 1px solid var(--gold); border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(240, 191, 64, 0.08), rgba(240, 191, 64, 0));

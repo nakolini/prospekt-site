@@ -127,6 +127,31 @@ def format_key(crop):
     if math.isclose(crop, 0.79):
         return "medium"
     raise ValueError("unknown crop factor %s" % crop)
+
+
+# Primes commonly sold for each smaller sensor size, so the guides can name a
+# lens you can buy instead of an exact 56.7 mm. Full frame needs none: its
+# recommendations are already real lenses.
+COMMON_PRIMES = {
+    "aps_c": [8, 10, 12, 14, 16, 18, 20, 23, 24, 27, 30, 33, 35, 50, 56, 85, 90],
+    "mft": [7.5, 8, 9, 10.5, 12, 15, 17, 20, 25, 30, 42.5, 45, 60, 75],
+}
+
+
+def real_focal(equivalent_focal, crop, tolerance=0.08):
+    """The common prime that frames closest to equivalent_focal on this sensor.
+
+    Falls back to the exact focal length when no prime is within tolerance
+    (a long lens is usually the end of a zoom, so any value is real there).
+    """
+    exact = focal_for_equivalent(equivalent_focal, crop)
+    primes = COMMON_PRIMES.get(format_key(crop), [])
+    if not primes:
+        return exact
+    best = min(primes, key=lambda p: abs(math.log(p / exact)))
+    return best if abs(best / exact - 1) <= tolerance else exact
+
+
 def focal_to_fit(subject, distance, crop, vertical=True, fill=PORTRAIT_FILL):
     """The focal length that fits a subject of this height at a distance.
 

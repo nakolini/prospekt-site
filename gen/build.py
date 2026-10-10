@@ -77,8 +77,9 @@ MEASURE = re.compile(r"(?<!\w)(?:f/)?\d+(?:[.,]\d+)?(?:\s?(?:mm|m|ft|x|°)(?!\w)
 DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "tr", "uk"}
 
 # Generated paths, removed before each build so stale pages never linger.
-GENERATED_DIRS = ["lens-compare", "cameras", "changelog"] + [s for _, s, _ in LANGUAGES if s]
-GENERATED_FILES = ["index.html", "sitemap.xml", "robots.txt", "llms.txt", ".nojekyll", "CNAME",
+GENERATED_DIRS = ["lens-compare", "cameras", "changelog", "compare", "focal-length", "guides"] + [
+    s for _, s, _ in LANGUAGES if s]
+GENERATED_FILES = ["index.html", "404.html", "sitemap.xml", "robots.txt", "llms.txt", ".nojekyll", "CNAME",
                    INDEXNOW_KEY + ".txt"]
 
 CHANGELOG = [
@@ -93,6 +94,31 @@ CHANGELOG = [
 FORMAT_KEYS = {1.0: "format.full_frame", 1.5: "format.aps_c", 1.6: "format.aps_c_canon",
                2.0: "format.mft", 0.79: "format.medium"}
 GENERIC_CROPS = [1.0, 1.5, 1.6, 2.0, 0.79]
+# The sensor sizes the comparison and guide tables cover.
+FORMAT_CROPS = [1.0, 1.5, 1.6, 2.0]
+
+# Prime pairs with a page at /compare/<a>mm-vs-<b>mm/: how many "which to choose"
+# lines each has in i18n (compare.<a>_<b>_choose_<n>), and the guides it links to.
+COMPARISONS = [
+    {"a": 24, "b": 35, "choose": 4, "guides": ["landscape", "interiors", "travel"]},
+    {"a": 28, "b": 35, "choose": 4, "guides": ["street", "travel"]},
+    {"a": 35, "b": 50, "choose": 4, "guides": ["street", "travel", "portraits"]},
+    {"a": 50, "b": 85, "choose": 4, "guides": ["portraits"]},
+    {"a": 85, "b": 135, "choose": 4, "guides": ["portraits", "sports-wildlife"]},
+]
+# Use-case guides at /focal-length/<slug>/, with their full-frame recommendations,
+# the main answer first. Each recommendation has a guide.<slug>_use_<focal> string.
+GUIDES = [
+    {"slug": "portraits", "recs": [85, 50, 135, 35], "portraits": True},
+    {"slug": "street", "recs": [35, 28, 50]},
+    {"slug": "landscape", "recs": [24, 16, 35, 70]},
+    {"slug": "travel", "recs": [35, 24, 50]},
+    {"slug": "interiors", "recs": [16, 24, 14, 35]},
+    # Past the app's 300 mm, so its line mentions the 2x extender.
+    {"slug": "sports-wildlife", "recs": [400, 300, 600, 200], "app_key": "app.line_guide_long"},
+]
+# Focal lengths the guide strings can quote numbers for (guide_values).
+GUIDE_FOCALS = sorted(set(lm.TABLE_FOCAL_LENGTHS + [10, 105, 400, 600]))
 
 
 def e(text):
@@ -166,6 +192,12 @@ class Lang:
 
     def mm(self, value):
         return self.isolate("%d mm" % round(value))
+
+    def focal(self, value):
+        """A lens you can buy: whole millimetres, or one decimal for lenses such as 42.5 mm."""
+        if value != round(value) and math.isclose(value * 2, round(value * 2)):
+            return self.isolate(self.num(value) + " mm")
+        return self.mm(value)
 
     def deg(self, value):
         return self.isolate(self.num(value) + "°")
@@ -264,7 +296,7 @@ def nested_frames_svg(crop, focals=lm.FRAME_FOCAL_LENGTHS):
 
 class Page:
     def __init__(self, path, title_key, description, body, jsonld=None, title_values=None,
-                 extra_head="", scripts=""):
+                 extra_head="", scripts="", noindex=False, root=None):
         self.path = path  # "", "lens-compare/", "cameras/canon-r7/"
         self.title_key = title_key
         self.title_values = title_values or {}
@@ -273,6 +305,10 @@ class Page:
         self.jsonld = jsonld or []
         self.extra_head = extra_head
         self.scripts = scripts
+        # The 404 page: no canonical or alternates, kept out of search, and
+        # root-absolute links because GitHub Pages serves it at any path.
+        self.noindex = noindex
+        self.root = root
 
 
 def url_for(lang, path):
@@ -308,26 +344,37 @@ def footer(lang, root, credit_keys):
     return """<footer class="site-footer"><div class="wrap">
 <p>{made} <a href="{threads}" rel="me">Threads</a></p>
 <p>{also} <a href="{anonimo}">{anonimo_t}</a> · <a href="{expenny}">{expenny_t}</a></p>
-<p><a href="{home}changelog/">{changelog}</a> · <a href="{root}support.html">{support}</a> · <a href="{root}privacy.html">{privacy}</a> · <a href="{root}terms.html">{terms}</a></p>
+<p><a href="{home}guides/">{guides}</a> · <a href="{home}changelog/">{changelog}</a> · <a href="{root}support.html">{support}</a> · <a href="{root}privacy.html">{privacy}</a> · <a href="{root}terms.html">{terms}</a></p>
 <p>{updated}</p>
 {credit}
 </div></footer>""".format(
         made=lang.t("footer.made_by"), threads=THREADS_URL, also=lang.t("footer.also"),
         anonimo=e(ANONIMO_URL + "?ct=web_prospekt&mt=8"), anonimo_t=lang.t("footer.anonimo"),
         expenny=e(EXPENNY_URL + "?ct=web_prospekt&mt=8"), expenny_t=lang.t("footer.expenny"),
-        home=home, root=root, changelog=lang.t("nav.changelog"), support=lang.t("footer.support"),
+        home=home, root=root, guides=lang.t("nav.guides"), changelog=lang.t("nav.changelog"), support=lang.t("footer.support"),
         privacy=lang.t("footer.privacy"), terms=lang.t("footer.terms"), credit=credit,
         updated=lang.t("footer.updated", date=SITE_UPDATED, version=lang.store["version"]))
 
 
 def render(lang, page):
-    root = rel_root(lang, page.path)
+    root = rel_root(lang, page.path) if page.root is None else page.root
     title = lang.t(page.title_key, **page.title_values)
     canonical = url_for(lang, page.path)
     alternates = "".join(
         '<link rel="alternate" hreflang="%s" href="%s">\n' % (other.code, e(url_for(other, page.path)))
         for other in ALL_LANGS)
     alternates += '<link rel="alternate" hreflang="x-default" href="%s">\n' % e(url_for(ALL_LANGS[0], page.path))
+    links = """<link rel="canonical" href="{canonical}">
+{alternates}<meta property="og:type" content="website">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}">
+<meta property="og:url" content="{canonical}">
+<meta property="og:image" content="{og_image}">
+<meta name="twitter:card" content="summary_large_image">
+""".format(canonical=e(canonical), alternates=alternates, title=title, description=e(page.description),
+           og_image=e(BASE_URL + "/" + SAMPLE["small"]))
+    if page.noindex:
+        links = '<meta name="robots" content="noindex">\n'
     jsonld = "".join(
         '<script type="application/ld+json">%s</script>\n' % json.dumps(block, ensure_ascii=False).replace("</", "<\\/")
         for block in page.jsonld)
@@ -341,14 +388,7 @@ def render(lang, page):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <meta name="description" content="{description}">
-<link rel="canonical" href="{canonical}">
-{alternates}<meta property="og:type" content="website">
-<meta property="og:title" content="{title}">
-<meta property="og:description" content="{description}">
-<meta property="og:url" content="{canonical}">
-<meta property="og:image" content="{og_image}">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#1a1a1a">
+{links}<meta name="theme-color" content="#1a1a1a">
 <meta name="apple-itunes-app" content="app-id={app_id}">
 <link rel="stylesheet" href="{root}{css}">
 {extra_head}{jsonld}</head>
@@ -361,8 +401,7 @@ def render(lang, page):
 {scripts}</body>
 </html>
 """.format(
-        code=lang.code, dir=lang.dir, title=title, description=e(page.description),
-        canonical=e(canonical), alternates=alternates, og_image=e(BASE_URL + "/" + SAMPLE["small"]),
+        code=lang.code, dir=lang.dir, title=title, description=e(page.description), links=links,
         app_id=APP_ID, root=root, css=asset_url("assets/site.css"), extra_head=page.extra_head, jsonld=jsonld,
         header=header(lang, root, page.path), body=page.body.replace("{root}", root),
         footer=footer(lang, root, credits), scripts=page.scripts.replace("{root}", root).replace("{js}", asset_url("assets/lens-compare.js")))
@@ -488,6 +527,7 @@ def home_page(lang):
 <section><h2>{compare_title}</h2>
 <div class="scroll"><table class="compare"><thead><tr><td></td><th scope="col">{c1}</th><th scope="col">{c2}</th><th scope="col">{c3}</th><th scope="col">{c4}</th></tr></thead><tbody>{compare}</tbody></table></div>
 <p>{compare_note}</p></section>
+{popular}
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}""".format(
         h1=lang.t("home.h1"), lead=lang.t("home.lead"), facts=lang.t("home.facts"),
@@ -506,6 +546,7 @@ def home_page(lang):
         compare_title=lang.t("home.compare_title"), c1=lang.t("home.compare_col_prospekt"),
         c2=lang.t("home.compare_col_calc"), c3=lang.t("home.compare_col_cine"),
         c4=lang.t("home.compare_col_rent"), compare=compare, compare_note=lang.t("home.compare_note"),
+        popular=popular_section(lang, ""),
         faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq), cta_box=cta_box(lang, "web_home"))
     return Page("", "home.title", lang.raw("home.description"), body,
                 jsonld=[app_jsonld(lang), faq_jsonld(faq)])
@@ -710,6 +751,7 @@ def tool_page(lang, bodies):
 <h3>{formats_title}</h3><p>{formats_intro}</p>{formats_table}</section>
 <section><h2>{math_title}</h2><ul>{math}</ul></section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
+{popular}
 {cta_box}
 <script type="application/json" id="tool-data">{data}</script>""".format(
         h1=lang.t("tool.h1"), lead=lang.t("tool.lead"), noscript=lang.t("tool.noscript"),
@@ -745,7 +787,7 @@ def tool_page(lang, bodies):
         formats_table=portrait_formats_table(lang),
         math_title=lang.t("tool.math_title"),
         math="".join("<li>%s</li>" % lang.t("tool.math_%d" % i) for i in range(1, 6)),
-        faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
+        faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq), popular=popular_section(lang, "../"),
         cta_box=cta_box(lang, "web_lenstool"), data=data)
     app = {
         "@context": "https://schema.org",
@@ -841,6 +883,7 @@ def body_page(lang, body, bodies):
 {zooms}
 <section id="distances"><h2>{distance_title}</h2><p>{distance_intro}</p>{distance_table}</section>
 <section id="portraits"><h2>{portrait_title}</h2><p>{portrait_intro}</p>{portraits}</section>
+<section><h2>{compare_title}</h2><ul class="links cols">{compare}<li><a href="../../guides/">{all_guides}</a></li></ul></section>
 <section class="faq"><h2>{faq_title}</h2>{faq}</section>
 {cta_box}
 <section><h2>{same_title}</h2><p>{same}</p></section>""".format(
@@ -855,6 +898,8 @@ def body_page(lang, body, bodies):
         portrait_title=lang.t("body.portrait_title", **values),
         portrait_intro=lang.t("body.portrait_intro", **values),
         portraits=portrait_list(lang, crop, "body.portrait_row", body=name),
+        compare_title=lang.t("guides.compare_title"), compare=compare_links(lang, "../../"),
+        all_guides=lang.t("guides.all"),
         faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
         cta_box=cta_box(lang, "web_body"), same_title=lang.t("body.same_format"), same=same_html)
     path = "cameras/%s/" % body["slug"]
@@ -881,6 +926,264 @@ def changelog_page(lang):
     body = "<h1>%s</h1>\n<p class=\"lead\">%s</p>\n%s\n%s" % (
         lang.t("changelog.h1"), lang.t("changelog.lead"), entries, cta_box(lang, "web_changelog"))
     return Page("changelog/", "changelog.title", lang.raw("changelog.description"), body)
+
+
+# ---------------------------------------------------------------- guides
+
+def compare_path(pair):
+    return "compare/%dmm-vs-%dmm/" % (pair["a"], pair["b"])
+
+
+def compare_key(pair):
+    return "compare.%d_%d" % (pair["a"], pair["b"])
+
+
+def guide_path(guide):
+    return "focal-length/%s/" % guide["slug"]
+
+
+def guide_key(guide):
+    return "guide.%s" % guide["slug"].replace("-", "_")
+
+
+GUIDES_BY_SLUG = {g["slug"]: g for g in GUIDES}
+
+
+def compare_links(lang, home, pairs=None):
+    return "".join('<li><a href="%s%s">%s</a></li>' % (
+        home, compare_path(p), lang.t("compare.link", a=lang.mm(p["a"]), b=lang.mm(p["b"])))
+        for p in (COMPARISONS if pairs is None else pairs))
+
+
+def guide_links(lang, home, guides=None):
+    return "".join('<li><a href="%s%s">%s</a></li>' % (home, guide_path(g), lang.t(guide_key(g) + "_name"))
+                   for g in (GUIDES if guides is None else guides))
+
+
+def popular_section(lang, home):
+    """Every guide and comparison, for the home and tool pages."""
+    return '<section><h2>%s</h2><ul class="links cols">%s%s<li><a href="%sguides/">%s</a></li></ul></section>' % (
+        lang.t("guides.popular_title"), guide_links(lang, home), compare_links(lang, home), home,
+        lang.t("guides.all"))
+
+
+def webpage_jsonld(lang, path, name, about):
+    return {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": html.unescape(name),
+        "url": url_for(lang, path),
+        "inLanguage": lang.code,
+        "about": [{"@type": "Thing", "name": html.unescape(a)} for a in about],
+        "dateModified": SITE_UPDATED,
+        "mentions": app_ref_jsonld(lang),
+        "publisher": organization_jsonld(),
+    }
+
+
+def compare_values(lang, pair):
+    a, b = pair["a"], pair["b"]
+    return {
+        "a": lang.mm(a), "b": lang.mm(b),
+        "h_a": lang.deg(lm.angles(a, 1.0)[0]), "h_b": lang.deg(lm.angles(b, 1.0)[0]),
+        "cover_a": lang.size(*lm.coverage(a, 1.0, 3)), "cover_b": lang.size(*lm.coverage(b, 1.0, 3)),
+        # How much bigger the longer lens draws the same subject from the same spot.
+        "ratio": lang.crop(round(b / float(a), 2)),
+        "full_a": lang.metres_feet(portrait_distances(1.0, a)[0]),
+        "full_b": lang.metres_feet(portrait_distances(1.0, b)[0]),
+        "full_a_15": lang.metres_feet(portrait_distances(1.5, a)[0]),
+        "full_b_15": lang.metres_feet(portrait_distances(1.5, b)[0]),
+        "eq_a": lang.mm(lm.equivalent(a, 1.5)), "eq_b": lang.mm(lm.equivalent(b, 1.5)),
+        "eq_a_16": lang.mm(lm.equivalent(a, 1.6)), "eq_b_16": lang.mm(lm.equivalent(b, 1.6)),
+        "ff_a": lang.focal(lm.real_focal(a, 1.5)), "ff_b": lang.focal(lm.real_focal(b, 1.5)),
+    }
+
+
+def pair_table(lang, focals):
+    """Each lens on each sensor size: equivalent, angle, coverage at 3 m and full-body distance."""
+    head = "".join('<th scope="col">%s</th>' % h for h in [
+        lang.t("tool.table_focal"), lang.t("tool.table_equiv"), lang.t("tool.table_h"),
+        lang.t("tool.table_covers", distance=lang.metres(3, 0)),
+        lang.t("tool.table_fit", height=lang.metres(lm.FULL_BODY_M))])
+    groups = []
+    for crop in FORMAT_CROPS:
+        rows = ['<tr class="group"><th scope="colgroup" colspan="5">%s <span class="muted">%s</span></th></tr>' % (
+            e(lang.format_name(crop)), lang.crop(crop))]
+        for f in focals:
+            rows.append("<tr><th scope=\"row\">%s</th><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                lang.mm(f), lang.mm(lm.equivalent(f, crop)), lang.deg(lm.angles(f, crop)[0]),
+                lang.size(*lm.coverage(f, crop, 3)), lang.metres_feet(portrait_distances(crop, f)[0])))
+        groups.append("<tbody>%s</tbody>" % "".join(rows))
+    return '<div class="scroll"><table class="pair"><thead><tr>%s</tr></thead>%s</table></div>' % (
+        head, "".join(groups))
+
+
+def compare_page(lang, pair):
+    key = compare_key(pair)
+    values = compare_values(lang, pair)
+    path = compare_path(pair)
+    answer = lang.t(key + "_answer", **values)
+    faq = [(lang.t("compare.faq_1_q", **values), answer + " " + lang.t("compare.faq_1_a", **values))]
+    faq += [(lang.t("compare.faq_%d_q" % i, **values), lang.t("compare.faq_%d_a" % i, **values)) for i in (2, 3)]
+    guides = [GUIDES_BY_SLUG[slug] for slug in pair["guides"]]
+    others = [p for p in COMPARISONS if p is not pair]
+    body = """<p class="crumbs"><a href="../../guides/">{guides}</a></p>
+<h1>{h1}</h1>
+<p class="lead">{answer} {numbers}</p>
+<section><h2>{frames_title}</h2>
+<figure class="nested-figure">{svg}<figcaption>{frames_caption}</figcaption></figure></section>
+<section><h2>{choose_title}</h2><ul class="choose">{choose}</ul>
+<p><a class="button secondary" href="../../lens-compare/?f={a},{b}">{open_tool}</a></p></section>
+<p class="app-line">{app_line}</p>
+<section><h2>{table_title}</h2><p>{table_intro}</p>{table}</section>
+<section class="faq"><h2>{faq_title}</h2>{faq}</section>
+<section><h2>{more_title}</h2><ul class="links">{more}</ul></section>""".format(
+        guides=lang.t("nav.guides"), h1=lang.t("compare.h1", **values), answer=answer,
+        numbers=lang.t("compare.lead_numbers", **values),
+        frames_title=lang.t("compare.frames_title", **values),
+        svg=nested_frames_svg(1.0, (pair["a"], pair["b"])),
+        frames_caption=lang.t("compare.frames_caption", **values),
+        choose_title=lang.t("compare.choose_title"),
+        choose="".join("<li>%s</li>" % lang.t("%s_choose_%d" % (key, i), **values)
+                       for i in range(1, pair["choose"] + 1)),
+        a=pair["a"], b=pair["b"], open_tool=lang.t("compare.open_tool"),
+        app_line=lang.with_app("app.line_compare", "web_compare_line", **values),
+        table_title=lang.t("compare.table_title", **values), table_intro=lang.t("compare.table_intro"),
+        table=pair_table(lang, (pair["a"], pair["b"])),
+        faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq),
+        more_title=lang.t("guides.more_title"),
+        more=guide_links(lang, "../../", guides) + compare_links(lang, "../../", others))
+    name = lang.t("compare.link", **values)
+    crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.guides"), "guides/"), (name, path)])
+    page_ld = webpage_jsonld(lang, path, lang.raw("compare.title", **values), [name])
+    return Page(path, "compare.title", lang.raw("compare.description", **values), body,
+                jsonld=[page_ld, faq_jsonld(faq), crumbs], title_values=values)
+
+
+def guide_values(lang):
+    """Numbers the guide strings can quote, by focal length: {aps_85} is the APS-C
+    lens that frames like 85 mm, {eq15_50} what 50 mm frames like on APS-C, and so on."""
+    values = {"crop_15": lang.crop(1.5)}
+    for f in GUIDE_FOCALS:
+        for name, crop in (("aps", 1.5), ("canon", 1.6), ("mft", 2.0)):
+            values["%s_%d" % (name, f)] = lang.focal(lm.real_focal(f, crop))
+        values["aps_%d_eq" % f] = lang.mm(lm.equivalent(lm.real_focal(f, 1.5), 1.5))
+        for name, crop in (("eq15", 1.5), ("eq16", 1.6), ("eq2", 2.0)):
+            values["%s_%d" % (name, f)] = lang.mm(lm.equivalent(f, crop))
+        full, head = portrait_distances(1.0, f)
+        values.update({
+            "h_%d" % f: lang.deg(lm.angles(f, 1.0)[0]),
+            "cover_%d" % f: lang.size(*lm.coverage(f, 1.0, 3)),
+            "w100_%d" % f: lang.metres(lm.coverage(f, 1.0, 100)[0], 0),
+            "full_%d" % f: lang.metres_feet(full), "head_%d" % f: lang.metres_feet(head),
+            "full_%d_15" % f: lang.metres_feet(portrait_distances(1.5, f)[0]),
+        })
+    # One-off scenes: a player 30 m away, and a 4 m wall with the camera horizontal.
+    values["w30_400"] = lang.metres(lm.coverage(400, 1.0, 30)[0])
+    for f in (16, 24):
+        values["wall_%d" % f] = lang.metres_feet(lm.distance_to_fit(4.0, f, 1.0, vertical=True, fill=1.0))
+    return values
+
+
+def recs_table(lang, guide):
+    """Each full-frame recommendation and the lens that frames about the same on smaller sensors."""
+    key = guide_key(guide)
+    head = "".join('<th scope="col">%s<br><span class="muted">%s</span></th>' % (
+        e(lang.format_name(c)), lang.crop(c)) for c in FORMAT_CROPS)
+    rows = []
+    for f in guide["recs"]:
+        cells = []
+        for crop in FORMAT_CROPS[1:]:
+            lens = lm.real_focal(f, crop)
+            cell = lang.focal(lens)
+            # Say what a rounded lens really frames like when it's more than a hair off.
+            if abs(lm.equivalent(lens, crop) / f - 1) > 0.02:
+                cell += '<br><span class="muted">%s</span>' % lang.t("guide.cell_equiv",
+                                                                     equiv=lang.mm(lm.equivalent(lens, crop)))
+            cells.append("<td>%s</td>" % cell)
+        rows.append('<tr><th scope="row">%s</th>%s<td class="use">%s</td></tr>' % (
+            lang.mm(f), "".join(cells), lang.t("%s_use_%d" % (key, f))))
+    return ('<div class="scroll"><table class="recs"><thead><tr>%s<th scope="col">%s</th></tr></thead>'
+            "<tbody>%s</tbody></table></div>") % (head, lang.t("guide.col_use"), "".join(rows))
+
+
+def guide_page(lang, guide, values):
+    key = guide_key(guide)
+    path = guide_path(guide)
+    name = lang.t(key + "_name")
+    faq = [(lang.t("%s_faq_%d_q" % (key, i), **values), lang.t("%s_faq_%d_a" % (key, i), **values))
+           for i in range(1, 4)]
+    portraits = ""
+    if guide.get("portraits"):
+        portraits = """<section id="portraits"><h2>{title}</h2><p>{intro}</p>{rows}
+<h3>{formats_title}</h3><p>{formats_intro}</p>{formats_table}</section>""".format(
+            title=lang.t("tool.portrait_title"), intro=lang.t("tool.portrait_intro"),
+            rows=portrait_list(lang, 1.0, "tool.portrait_row"),
+            formats_title=lang.t("tool.portrait_formats_title"),
+            formats_intro=lang.t("tool.portrait_formats_intro"), formats_table=portrait_formats_table(lang))
+    pairs = [p for p in COMPARISONS if guide["slug"] in p["guides"]]
+    others = [g for g in GUIDES if g is not guide]
+    body = """<p class="crumbs"><a href="../../guides/">{guides}</a></p>
+<h1>{h1}</h1>
+<p class="lead">{answer}</p>
+<section><h2>{table_title}</h2><p>{table_intro}</p>{table}
+<p><a class="button secondary" href="../../lens-compare/?f={focals}">{open_tool}</a></p></section>
+<section><h2>{why_title}</h2>{why}</section>
+{portraits}
+<p class="app-line">{app_line}</p>
+<section class="faq"><h2>{faq_title}</h2>{faq}</section>
+<section><h2>{more_title}</h2><ul class="links">{more}</ul></section>""".format(
+        guides=lang.t("nav.guides"), h1=lang.t(key + "_h1"), answer=lang.t(key + "_answer", **values),
+        table_title=lang.t("guide.table_title"), table_intro=lang.t("guide.table_intro"),
+        table=recs_table(lang, guide), focals=",".join(str(f) for f in sorted(guide["recs"])),
+        open_tool=lang.t("guide.open_tool"), why_title=lang.t("guide.why_title"),
+        why="".join("<p>%s</p>" % lang.t("%s_why_%d" % (key, i), **values) for i in range(1, 4)),
+        portraits=portraits,
+        app_line=lang.with_app(guide.get("app_key", "app.line_guide"), "web_guide_line"),
+        faq_title=lang.t("home.faq_title"), faq=faq_html(lang, faq), more_title=lang.t("guides.more_title"),
+        more=compare_links(lang, "../../", pairs) + guide_links(lang, "../../", others))
+    crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.guides"), "guides/"), (name, path)])
+    page_ld = webpage_jsonld(lang, path, lang.raw("guide.title", name=html.unescape(name)), [name])
+    return Page(path, "guide.title", lang.raw(key + "_answer", **values), body,
+                jsonld=[page_ld, faq_jsonld(faq), crumbs], title_values={"name": html.unescape(name)})
+
+
+def guides_page(lang, values):
+    """The hub: every guide and comparison with its one-line answer."""
+    def item(href, name, summary):
+        return '<li><a href="%s">%s</a><span class="summary">%s</span></li>' % (href, name, summary)
+    uses = "".join(item("../" + guide_path(g), lang.t(guide_key(g) + "_name"),
+                        lang.t(guide_key(g) + "_answer", **values)) for g in GUIDES)
+    pairs = []
+    for p in COMPARISONS:
+        pv = compare_values(lang, p)
+        pairs.append(item("../" + compare_path(p), lang.t("compare.link", **pv),
+                          lang.t(compare_key(p) + "_answer", **pv)))
+    body = """<h1>{h1}</h1>
+<p class="lead">{lead}</p>
+<section><h2>{uses_title}</h2><ul class="guide-list">{uses}</ul></section>
+<section><h2>{compare_title}</h2><ul class="guide-list">{pairs}</ul></section>
+<p class="app-line">{app_line}</p>
+<p><a class="button secondary" href="../lens-compare/">{try_tool}</a></p>""".format(
+        h1=lang.t("guides.h1"), lead=lang.t("guides.lead"), uses_title=lang.t("guides.uses_title"),
+        uses=uses, compare_title=lang.t("guides.compare_title"), pairs="".join(pairs),
+        app_line=lang.with_app("app.line_guides", "web_guides_line"), try_tool=lang.t("cta.try_tool"))
+    crumbs = breadcrumbs_jsonld(lang, [("Prospekt", ""), (lang.t("nav.guides"), "guides/")])
+    about = [lang.t(guide_key(g) + "_name") for g in GUIDES] + [
+        lang.t("compare.link", a=lang.mm(p["a"]), b=lang.mm(p["b"])) for p in COMPARISONS]
+    page_ld = webpage_jsonld(lang, "guides/", lang.raw("guides.title"), about)
+    page_ld["@type"] = "CollectionPage"
+    return Page("guides/", "guides.title", lang.raw("guides.description"), body, jsonld=[page_ld, crumbs])
+
+
+def not_found_page(lang):
+    """GitHub Pages serves /404.html for any missing path, so its links start at the site root."""
+    body = """<h1>{title}</h1>
+<p class="lead">{lead}</p>
+<ul class="links"><li><a href="/">{home}</a></li><li><a href="/lens-compare/">{tool}</a></li><li><a href="/cameras/">{cameras}</a></li><li><a href="/guides/">{guides}</a></li></ul>""".format(
+        title=lang.t("notfound.title"), lead=lang.t("notfound.lead"), home=lang.t("notfound.home"),
+        tool=lang.t("nav.tool"), cameras=lang.t("nav.cameras"), guides=lang.t("nav.guides"))
+    return Page("", "notfound.title", lang.raw("notfound.lead"), body, noindex=True, root="/")
 
 
 # ---------------------------------------------------------------- outputs
@@ -952,6 +1255,7 @@ def llms_txt(bodies):
         "- [Changelog](%s/changelog/): every release" % BASE_URL,
         "- [App Store](https://apps.apple.com/app/id%s)" % APP_ID,
         "",
+    ] + guides_llms(ALL_LANGS[0]) + [
         "## Facts",
         "",
         "- App Store name: %s (localized: %s)" % (STORE["en"]["name"], "; ".join(sorted(
@@ -973,6 +1277,24 @@ def llms_txt(bodies):
         "",
     ]
     return "\n".join(lines)
+
+
+def guides_llms(lang):
+    """The Guides section of llms.txt: each question page with its one-line answer, in English."""
+    def plain(text):
+        return text.replace("\u00a0", " ")
+    values = guide_values(lang)
+    lines = ["## Guides", "",
+             "- [Focal length guides](%s/guides/): %s" % (BASE_URL, plain(lang.raw("guides.description")))]
+    for pair in COMPARISONS:
+        pv = compare_values(lang, pair)
+        lines.append("- [%s](%s/%s): %s" % (plain(lang.raw("compare.link", **pv)), BASE_URL, compare_path(pair),
+                                            plain(lang.raw(compare_key(pair) + "_answer", **pv))))
+    for guide in GUIDES:
+        key = guide_key(guide)
+        lines.append("- [%s](%s/%s): %s" % (plain(lang.raw(key + "_name")), BASE_URL, guide_path(guide),
+                                            plain(lang.raw(key + "_answer", **values))))
+    return lines + [""]
 
 
 def write(path, content):
@@ -999,12 +1321,17 @@ def build():
     clean()
     paths = []
     for lang in ALL_LANGS:
+        values = guide_values(lang)
         pages = [home_page(lang), tool_page(lang, bodies), cameras_page(lang, bodies), changelog_page(lang)]
         pages += [body_page(lang, body, bodies) for body in bodies]
+        pages += [guides_page(lang, values)] + [compare_page(lang, pair) for pair in COMPARISONS]
+        pages += [guide_page(lang, guide, values) for guide in GUIDES]
         for page in pages:
             write(lang.prefix + page.path + "index.html", render(lang, page))
         if lang.code == "en":
             paths = [page.path for page in pages]
+    # English only: GitHub Pages serves one 404 page for every path.
+    write("404.html", render(ALL_LANGS[0], not_found_page(ALL_LANGS[0])))
     write("sitemap.xml", sitemap(paths))
     write("robots.txt", ROBOTS.format(base=BASE_URL))
     write("llms.txt", llms_txt(bodies))
