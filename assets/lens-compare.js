@@ -237,6 +237,58 @@
 
   function key(focal, slot) { return focal + "|" + slot; }
 
+  // [right, row]: the four corners inside a frame clockwise from top left,
+  // then just above and just below its left edge. Row 0 is the top, 1 the
+  // bottom, -1 above the frame, 2 below it.
+  var CORNERS = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  var OUTSIDE = [[0, -1], [0, 2]];
+
+  function overlap(a, b) {
+    var x = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
+    var y = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+    return x * y;
+  }
+
+  // Put a frame's label in the first corner where it clears the labels already
+  // drawn and stays inside the photo, trying the label without its zoom names
+  // next; if nothing fits, where it overlaps least.
+  function placeLabel(svg, item, placed, w, h) {
+    var label = svgEl("text", { class: item.cls });
+    svg.appendChild(label);
+    var corners = CORNERS.map(function (_, i) { return CORNERS[(item.start + i) % 4]; }).concat(OUTSIDE);
+    var texts = item.short !== item.text ? [item.text, item.short] : [item.text];
+    var order = [];
+    texts.forEach(function (text) { corners.forEach(function (corner) { order.push([text, corner]); }); });
+    var best = null;
+    for (var i = 0; i < order.length; i++) {
+      var text = order[i][0], corner = order[i][1];
+      label.textContent = text;
+      var right = corner[0] === 1;
+      var row = corner[1];
+      label.setAttribute("x", right ? item.x + item.w - 8 : item.x + 8);
+      if (right) label.setAttribute("text-anchor", "end"); else label.removeAttribute("text-anchor");
+      label.setAttribute("y", 0);
+      var box = label.getBBox();
+      var ascent = -box.y, descent = box.y + box.height;
+      var baseline = row === 0 ? item.y + 6 + ascent
+        : row === 1 ? item.y + item.h - 6 - descent
+        : row === -1 ? item.y - 4 - descent
+        : item.y + item.h + 4 + ascent;
+      label.setAttribute("y", baseline);
+      box = label.getBBox();
+      var rect = { x: box.x - 3, y: box.y - 2, width: box.width + 6, height: box.height + 4 };
+      var outside = rect.x < 0 || rect.y < 0 || rect.x + rect.width > w || rect.y + rect.height > h;
+      var cost = outside ? Infinity : placed.reduce(function (sum, other) { return sum + overlap(rect, other); }, 0);
+      if (!best || cost < best.cost) best = { cost: cost, text: text, x: label.getAttribute("x"), y: baseline, right: right, rect: rect };
+      if (cost === 0) break;
+    }
+    label.textContent = best.text;
+    label.setAttribute("x", best.x);
+    label.setAttribute("y", best.y);
+    if (best.right) label.setAttribute("text-anchor", "end"); else label.removeAttribute("text-anchor");
+    placed.push(best.rect);
+  }
+
   function drawFrames() {
     var old = stage.querySelector("svg.frames");
     if (old) old.remove();
@@ -244,36 +296,41 @@
     var w = 1000, h = 1000 / aspect;
     var svg = svgEl("svg", { class: "frames", viewBox: "0 0 " + w + " " + h, "aria-hidden": "true" });
     var tooWide = [];
+    var labels = [];
     var cams = cameras();
+    var frames = [];
     cams.forEach(function (cam) {
-      var drawn = 0;
       state.focals.forEach(function (focal) {
         var f = frameInPhoto(focal, cam.crop, state.photoFocal, aspect);
         if (f[0] > 1.0001 || f[1] > 1.0001) {
           tooWide.push(mm(focal) + (cams.length > 1 ? " (" + cam.name + ")" : ""));
           return;
         }
-        var x = ((1 - f[0]) * w) / 2, y = ((1 - f[1]) * h) / 2;
-        var classes = ["b" + (cam.slot + 1)];
-        if (key(focal, cam.slot) === state.selected) classes.push("active");
-        svg.appendChild(svgEl("rect", { x: x, y: y, width: f[0] * w, height: f[1] * h, class: classes.join(" ") }));
-        // Alternate corners so labels of neighbouring frames don't overlap:
-        // the first camera uses top left and bottom right, the second the other two.
-        var even = drawn++ % 2 === 0;
-        var left = cam.slot === 0 ? even : !even;
-        var top = even;
-        var attrs = {
-          x: left ? x + 8 : x + f[0] * w - 8,
-          y: top ? y + 26 : y + f[1] * h - 10,
-          class: classes[0],
-        };
-        if (!left) attrs["text-anchor"] = "end";
-        var label = svgEl("text", attrs);
-        label.textContent = focalLabel(focal);
-        svg.appendChild(label);
+        frames.push({ cam: cam, focal: focal, f: f });
       });
     });
+    // Zoom the photo in so the widest frame fills most of it: the scene
+    // outside every chosen lens only makes the frames small.
+    var widest = frames.reduce(function (m, fr) { return Math.max(m, fr.f[0], fr.f[1]); }, 0);
+    var zoom = widest ? Math.max(1, Math.min(4, 0.85 / widest)) : 1;
+    photo.style.transform = zoom > 1 ? "scale(" + zoom + ")" : "";
+    var drawn = {};
+    frames.forEach(function (fr) {
+      var cam = fr.cam, focal = fr.focal;
+      var f = [fr.f[0] * zoom, fr.f[1] * zoom];
+      drawn[cam.slot] = drawn[cam.slot] || 0;
+      var x = ((1 - f[0]) * w) / 2, y = ((1 - f[1]) * h) / 2;
+      var classes = ["b" + (cam.slot + 1)];
+      if (key(focal, cam.slot) === state.selected) classes.push("active");
+      svg.appendChild(svgEl("rect", { x: x, y: y, width: f[0] * w, height: f[1] * h, class: classes.join(" ") }));
+      labels.push({ x: x, y: y, w: f[0] * w, h: f[1] * h, cls: classes[0], text: focalLabel(focal), short: focal + " mm",
+        // Neighbouring frames start from opposite corners: the first camera
+        // top left and bottom right, the second top right and bottom left.
+        start: cam.slot + (drawn[cam.slot]++ % 2) * 2 });
+    });
     stage.appendChild(svg);
+    var placed = [];
+    labels.forEach(function (item) { placeLabel(svg, item, placed, w, h); });
     notes.textContent = tooWide.map(function (f) { return fill(strings["tool.too_wide"], { focal: f }); }).join(". ");
     legend.hidden = cams.length < 2;
     legend.textContent = "";
@@ -552,6 +609,9 @@
   });
 
   photo.addEventListener("load", render);
+  // Labels grow on narrow screens (site.css), so place them again when that flips.
+  var narrow = window.matchMedia("(max-width: 600px)");
+  if (narrow.addEventListener) narrow.addEventListener("change", drawFrames);
 
   $("share").addEventListener("click", function () {
     var done = function () { shareStatus.textContent = strings["tool.copied"]; };
