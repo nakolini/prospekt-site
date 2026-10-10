@@ -34,13 +34,13 @@ EXPENNY_URL = "https://apps.apple.com/app/id6758223013"
 
 # Sample photos for the tool, each credited in the footer of pages that show it.
 SAMPLES = [
-    {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "width": 1920, "height": 1280,
+    {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "thumb": "assets/sample-14mm-thumb.jpg", "width": 1920, "height": 1280,
      "focal": 14.0, "label_key": "tool.photo_sample", "credit_key": "footer.photo_credit"},
     # Canon EOS R5 at 10 mm, trimmed from 8192 to 8013 px wide on Commons: 10 x 8192 / 8013.
-    {"src": "assets/sample-10mm.jpg", "small": None, "width": 1920, "height": 1280,
+    {"src": "assets/sample-10mm.jpg", "small": None, "thumb": "assets/sample-10mm-thumb.jpg", "width": 1920, "height": 1280,
      "focal": 10.2, "label_key": "tool.photo_sample_10", "credit_key": "footer.photo_credit_10"},
     # Canon EOS 5D Mark IV at 20 mm, full 6720 x 4480 frame.
-    {"src": "assets/sample-20mm.jpg", "small": None, "width": 1920, "height": 1280,
+    {"src": "assets/sample-20mm.jpg", "small": None, "thumb": "assets/sample-20mm-thumb.jpg", "width": 1920, "height": 1280,
      "focal": 20.0, "label_key": "tool.photo_sample_20", "credit_key": "footer.photo_credit_20"},
 ]
 SAMPLE = SAMPLES[0]
@@ -529,7 +529,8 @@ def body_options(lang, bodies):
 
 TOOL_JS_KEYS = ["tool.too_wide", "tool.preview_title", "tool.copied", "tool.share",
                 "tool.table_focal", "tool.table_equiv", "tool.table_h", "tool.table_v", "tool.table_d",
-                "tool.table_covers", "tool.table_fit_v", "tool.table_fit_h"]
+                "tool.table_covers", "tool.table_fit", "tool.preview_hint",
+                "tool.distance_summary"]
 
 ZOOM_PRESETS = [(10, 18), (16, 35), (18, 55), (24, 70), (24, 105), (28, 75), (70, 200), (100, 400), (150, 600)]
 
@@ -547,44 +548,64 @@ def tool_page(lang, bodies):
                        "comma": lang.code in DECIMAL_COMMA, "rtl": lang.dir == "rtl",
                        "fill": lm.PORTRAIT_FILL, "foot": lm.FOOT_M},
                       ensure_ascii=False).replace("</", "<\\/")
-    samples = "".join('<label class="inline"><input type="radio" name="photo" value="sample-%d"%s> %s</label>' % (
-        i, " checked" if i == 0 else "", lang.t(sample["label_key"])) for i, sample in enumerate(SAMPLES))
+    # Sample photos as tiles; the radio's name is the full label, the tile shows the focal length.
+    samples = "".join(
+        '<label class="tile"><input type="radio" name="photo" value="sample-%d"%s aria-label="%s">'
+        '<img src="{root}%s" width="240" height="160" alt=""><span class="tile-text">%s</span></label>' % (
+            i, " checked" if i == 0 else "", e(html.unescape(lang.t(sample["label_key"]))), sample["thumb"],
+            lang.mm(sample["focal"])) for i, sample in enumerate(SAMPLES))
     options = body_options(lang, bodies)
+    # The photo comes first and stays in view while the controls change it (site.css);
+    # the table, notes and sharing follow.
     body = """<h1>{h1}</h1>
 <p class="lead">{lead}</p>
 <noscript><p class="note">{noscript}</p></noscript>
 <form id="tool" class="tool" hidden>
-<div class="controls">
-<label>{body_label}<select id="body">{options}</select></label>
-<label>{body2_label}<select id="body2"><option value="">{body2_none}</option>{options}</select></label>
-<fieldset class="wide"><legend>{focals_label}</legend><div class="chips" id="chips">{chips}</div>
-<label class="inline">{custom_label} <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric"> <button type="button" id="add">{add}</button></label>
-<p class="sublabel" id="zooms-label">{zooms_label}</p>
-<div class="chips" id="zooms" role="group" aria-labelledby="zooms-label">{zoom_chips}</div>
-<div class="inline-row"><span id="zoom-custom-label">{zoom_custom_label}</span> <span class="range"><input id="zoom-from" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_from}"> <span aria-hidden="true">-</span> <input id="zoom-to" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_to}"></span> <button type="button" id="add-zoom" aria-describedby="zoom-custom-label">{add}</button></div>
-</fieldset>
-<fieldset><legend>{distance_legend}</legend>
+<div class="workspace">
+<div class="viewer" id="viewer">
+<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}
+<button type="button" class="lens-back" id="lens-back" hidden>{lens_back}</button></div>
+<p class="legend" id="legend" hidden></p>
+<p class="viewer-hint" id="viewer-hint">{preview_hint}</p>
+<p class="notes" id="notes"></p>
+</div>
+<div class="panel">
+<div class="group">
+<label class="group-label" for="body">{body_label}</label><select id="body">{options}</select>
+<button type="button" class="link-button" id="add-body2" aria-controls="body2-box" aria-expanded="false">+ {body2_add}</button>
+<div id="body2-box" hidden><label class="group-label" for="body2">{body2_label}</label><select id="body2"><option value="">{body2_none}</option>{options}</select></div>
+</div>
+<div class="group">
+<p class="group-label" id="focals-label">{focals_label}</p>
+<div class="chips scroller" id="chips" role="group" aria-labelledby="focals-label">{chips}<button type="button" class="chip more" id="more-focal" aria-controls="custom-row" aria-expanded="false" aria-label="{custom_label}">+</button></div>
+<div class="inline-row" id="custom-row" hidden><label for="custom">{custom_label}</label> <input id="custom" type="number" min="4" max="1200" step="1" inputmode="numeric"> <button type="button" id="add">{add}</button></div>
+<p class="group-label" id="zooms-label">{zooms_label}</p>
+<div class="chips scroller" id="zooms" role="group" aria-labelledby="zooms-label">{zoom_chips}<button type="button" class="chip more" id="more-zoom" aria-controls="zoom-row" aria-expanded="false" aria-label="{zoom_custom_label}">+</button></div>
+<div class="inline-row" id="zoom-row" hidden><span id="zoom-custom-label">{zoom_custom_label}</span> <span class="range"><input id="zoom-from" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_from}"> <span aria-hidden="true">-</span> <input id="zoom-to" type="number" min="4" max="1200" step="1" inputmode="numeric" aria-label="{zoom_to}"></span> <button type="button" id="add-zoom" aria-describedby="zoom-custom-label">{add}</button></div>
+</div>
+<div class="group">
+<p class="group-label" id="photo-label">{photo_label}</p>
+<div class="tiles" role="radiogroup" aria-labelledby="photo-label">{samples}<label class="tile own"><input type="radio" name="photo" value="own"><span class="tile-plus" aria-hidden="true">+</span><span class="tile-text">{photo_own}</span></label></div>
+<div id="own" hidden><input id="file" type="file" accept="image/*">
+<label class="field">{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26"></label>
+<p class="muted">{photo_focal_hint} {photo_private}</p></div>
+</div>
+<details class="group distance">
+<summary><span class="group-label">{distance_legend}</span> <span class="summary-value" id="distance-summary"></span></summary>
 <div class="field"><label for="distance">{distance_label}</label> <span class="with-unit"><input id="distance" type="number" min="0.1" max="100000" step="0.1" value="3" inputmode="decimal"> <span class="unit">m</span></span></div>
-<div class="segmented" role="radiogroup" aria-label="{unit_label}"><label><input type="radio" name="unit" value="m" checked> {unit_m}</label><label><input type="radio" name="unit" value="ft"> {unit_ft}</label></div>
 <div class="field"><label for="subject">{subject_label}</label> <span class="with-unit"><input id="subject" type="number" min="0.01" max="100000" step="0.1" value="1.8" inputmode="decimal"> <span class="unit">m</span></span></div>
 <div class="segmented" role="radiogroup" aria-label="{subject_label}"><label><input type="radio" name="orient" value="v" checked> {vertical}</label><label><input type="radio" name="orient" value="h"> {horizontal}</label></div>
+<div class="segmented" role="radiogroup" aria-label="{unit_label}"><label><input type="radio" name="unit" value="m" checked> {unit_m}</label><label><input type="radio" name="unit" value="ft"> {unit_ft}</label></div>
 <p class="muted">{subject_hint}</p>
-</fieldset>
-<fieldset><legend>{photo_label}</legend>
-{samples}
-<label class="inline"><input type="radio" name="photo" value="own"> {photo_own}</label>
-<div id="own" hidden><input id="file" type="file" accept="image/*">
-<label>{photo_focal_label} <input id="photo-focal" type="number" min="4" max="1200" step="0.1" value="26"></label>
-<p class="muted">{photo_focal_hint}</p><p class="muted">{photo_private}</p></div></fieldset>
+</details>
 </div>
-<div class="stage">
-<div class="photo-frame" id="stage"><img id="photo" src="{{root}}{src}" data-root="{{root}}" width="{w}" height="{h}" alt="">{frames}</div>
-<p class="legend" id="legend" hidden></p>
-<p class="muted" id="notes"></p>
+</div>
+<div class="results" id="results-box">
+<label class="switch"><input type="checkbox" id="show-angles"> {angles_toggle}</label>
 <div id="results">{table}</div>
-<p class="muted">{preview_hint} {distance_note} {soft}</p>
-<figure class="preview" id="preview" hidden><canvas id="preview-canvas"></canvas><figcaption id="preview-caption"></figcaption></figure>
-<p><button type="button" id="share">{share}</button> <span id="share-status" role="status"></span></p>
+<p class="muted">{distance_note} {soft}</p>
+<div class="actions"><button type="button" id="share">{share}</button> <span id="share-status" role="status"></span></div>
+<p class="inline-cta"><a href="{app_url}">{cta_title} <span>{app_short} &rarr;</span></a></p>
 </div>
 </form>
 <figure class="photo" id="static-figure"><div class="photo-frame"><img src="{{root}}{small}" width="1200" height="800" alt="" loading="lazy">{frames}</div>
@@ -598,6 +619,9 @@ def tool_page(lang, bodies):
 <script type="application/json" id="tool-data">{data}</script>""".format(
         h1=lang.t("tool.h1"), lead=lang.t("tool.lead"), noscript=lang.t("tool.noscript"),
         body_label=lang.t("tool.body_label"), options=options, body2_label=lang.t("tool.body2_label"),
+        body2_add=lang.t("tool.body2_add"), lens_back=lang.t("tool.lens_back"),
+        angles_toggle=lang.t("tool.angles_toggle"), app_url=e(app_store_url("web_lenstool_inline")),
+        cta_title=lang.t("cta.box_title"), app_short=lang.t("cta.app_store_short"),
         body2_none=lang.t("tool.body2_none"),
         focals_label=lang.t("tool.focals_label"), chips=chips, custom_label=lang.t("tool.custom_label"),
         add=lang.t("tool.add"), zooms_label=lang.t("tool.zooms_label"), zoom_chips=zoom_chips,

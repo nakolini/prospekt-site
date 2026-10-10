@@ -118,9 +118,13 @@
   var notes = $("notes");
   var legend = $("legend");
   var results = $("results");
-  var preview = $("preview");
-  var canvas = $("preview-canvas");
-  var previewCaption = $("preview-caption");
+  var resultsBox = $("results-box");
+  var viewerHint = $("viewer-hint");
+  var lensBack = $("lens-back");
+  var body2Box = $("body2-box");
+  var addBody2 = $("add-body2");
+  var distanceSummary = $("distance-summary");
+  var showAngles = $("show-angles");
   var ownBox = $("own");
   var fileInput = $("file");
   var photoFocalInput = $("photo-focal");
@@ -194,7 +198,7 @@
     var later = Array.prototype.find.call(box.children, function (c) {
       return parseFloat(c.getAttribute(attr)) > value;
     });
-    box.insertBefore(chip, later || null);
+    box.insertBefore(chip, later || box.querySelector(".more"));
   }
 
   function makeChip(attr, value, text) {
@@ -219,12 +223,12 @@
   function syncChips() {
     state.focals.forEach(ensureChip);
     state.zooms.forEach(ensureZoomChip);
-    Array.prototype.forEach.call(chipsBox.children, function (chip) {
+    Array.prototype.forEach.call(chipsBox.querySelectorAll("[data-focal]"), function (chip) {
       var focal = parseFloat(chip.getAttribute("data-focal"));
       chip.setAttribute("aria-pressed", state.focals.indexOf(focal) >= 0 ? "true" : "false");
     });
     var names = state.zooms.map(zoomName);
-    Array.prototype.forEach.call(zoomsBox.children, function (chip) {
+    Array.prototype.forEach.call(zoomsBox.querySelectorAll("[data-zoom]"), function (chip) {
       chip.setAttribute("aria-pressed", names.indexOf(chip.getAttribute("data-zoom")) >= 0 ? "true" : "false");
     });
   }
@@ -289,6 +293,10 @@
     placed.push(best.rect);
   }
 
+  // Frames on the photo in viewBox units, smallest first, for tapping.
+  var hits = [];
+  var lastZoom = 1;
+
   function drawFrames() {
     var old = stage.querySelector("svg.frames");
     if (old) old.remove();
@@ -309,11 +317,20 @@
         frames.push({ cam: cam, focal: focal, f: f });
       });
     });
-    // Zoom the photo in so the widest frame fills most of it: the scene
-    // outside every chosen lens only makes the frames small.
+    // Lens view: one frame, zoomed to fill the photo, the rest of the scene dimmed.
+    var lens = frames.filter(function (fr) { return key(fr.focal, fr.cam.slot) === state.selected; })[0];
+    if (lens) frames = [lens];
+    // Otherwise zoom the photo in so the widest frame fills most of it: the
+    // scene outside every chosen lens only makes the frames small.
     var widest = frames.reduce(function (m, fr) { return Math.max(m, fr.f[0], fr.f[1]); }, 0);
-    var zoom = widest ? Math.max(1, Math.min(4, 0.85 / widest)) : 1;
+    var zoom = widest ? Math.max(1, Math.min(lens ? 12 : 4, (lens ? 0.94 : 0.85) / widest)) : 1;
     photo.style.transform = zoom > 1 ? "scale(" + zoom + ")" : "";
+    // The photo eases to its new zoom (site.css); the frames fade in once it's there.
+    if (Math.abs(zoom - lastZoom) > 0.001) svg.classList.add("settle");
+    lastZoom = zoom;
+    stage.classList.toggle("lens", !!lens);
+    lensBack.hidden = !lens;
+    hits = [];
     var drawn = {};
     frames.forEach(function (fr) {
       var cam = fr.cam, focal = fr.focal;
@@ -321,13 +338,22 @@
       drawn[cam.slot] = drawn[cam.slot] || 0;
       var x = ((1 - f[0]) * w) / 2, y = ((1 - f[1]) * h) / 2;
       var classes = ["b" + (cam.slot + 1)];
-      if (key(focal, cam.slot) === state.selected) classes.push("active");
+      if (lens) {
+        svg.appendChild(svgEl("path", {
+          class: "dim", "fill-rule": "evenodd",
+          d: "M0 0H" + w + "V" + h + "H0Z M" + x + " " + y + "h" + f[0] * w + "v" + f[1] * h + "h" + -f[0] * w + "Z",
+        }));
+      }
       svg.appendChild(svgEl("rect", { x: x, y: y, width: f[0] * w, height: f[1] * h, class: classes.join(" ") }));
+      hits.push({ key: key(focal, cam.slot), x: x, y: y, w: f[0] * w, h: f[1] * h });
+      // In lens view the caption under the photo names the frame.
+      if (lens) return;
       labels.push({ x: x, y: y, w: f[0] * w, h: f[1] * h, cls: classes[0], text: focalLabel(focal), short: focal + " mm",
         // Neighbouring frames start from opposite corners: the first camera
         // top left and bottom right, the second top right and bottom left.
         start: cam.slot + (drawn[cam.slot]++ % 2) * 2 });
     });
+    hits.sort(function (a, b) { return a.w * a.h - b.w * b.h; });
     stage.appendChild(svg);
     var placed = [];
     labels.forEach(function (item) { placeLabel(svg, item, placed, w, h); });
@@ -351,10 +377,12 @@
     var heads = [
       strings["tool.table_focal"],
       fill(strings["tool.table_covers"], { distance: typed(state.distance) }),
-      fill(strings[state.vertical ? "tool.table_fit_v" : "tool.table_fit_h"], { height: typed(state.subject) }),
+      fill(strings["tool.table_fit"], { height: typed(state.subject) }),
       strings["tool.table_equiv"], strings["tool.table_h"], strings["tool.table_v"], strings["tool.table_d"],
     ];
-    var head = heads.map(function (text) { return '<th scope="col">' + escapeHtml(text) + "</th>"; }).join("");
+    var head = heads.map(function (text, i) {
+      return "<th scope=\"col\"" + (i > 3 ? ' class="angle"' : "") + ">" + escapeHtml(text) + "</th>";
+    }).join("");
     var body = cams.map(function (cam) {
       var group = cams.length > 1
         ? '<tbody><tr class="group"><th colspan="7" scope="colgroup"><span class="swatch b' + (cam.slot + 1) + '"></span>' +
@@ -369,32 +397,25 @@
           '" tabindex="0"><th scope="row">' + mm(focal) +
           (zooms.length ? ' <span class="zoom-tag">' + escapeHtml(zooms.join(", ")) + "</span>" : "") +
           "</th><td>" + size(coverage(focal, cam.crop, state.distance)) + "</td><td>" + length(fit) +
-          "</td><td>" + mm(focal * cam.crop) + "</td><td>" + deg(a[0]) + "</td><td>" + deg(a[1]) + "</td><td>" + deg(a[2]) +
-          "</td></tr>";
+          "</td><td>" + mm(focal * cam.crop) + '</td><td class="angle">' + deg(a[0]) + '</td><td class="angle">' + deg(a[1]) +
+          '</td><td class="angle">' + deg(a[2]) + "</td></tr>";
       }).join("") + "</tbody>";
     }).join("");
     results.innerHTML = '<div class="scroll"><table class="angles"><thead><tr>' + head + "</tr></thead>" + body + "</table></div>";
   }
 
-  function drawPreview() {
-    if (state.selected === null || !photo.complete || !photo.naturalWidth) { preview.hidden = true; return; }
-    var parts = state.selected.split("|");
-    var focal = parseFloat(parts[0]);
-    var cam = cameras().filter(function (c) { return String(c.slot) === parts[1]; })[0];
-    if (!cam) { preview.hidden = true; return; }
-    var f = frameInPhoto(focal, cam.crop, state.photoFocal, photoAspect());
-    if (f[0] > 1.0001 || f[1] > 1.0001) { preview.hidden = true; return; }
-    var sw = f[0] * photo.naturalWidth, sh = f[1] * photo.naturalHeight;
-    var sx = (photo.naturalWidth - sw) / 2, sy = (photo.naturalHeight - sh) / 2;
-    var width = Math.min(1200, Math.max(600, Math.round(sw)));
-    canvas.width = width;
-    canvas.height = Math.round((width * sh) / sw);
-    var ctx = canvas.getContext("2d");
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(photo, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-    var what = mm(focal) + (cameras().length > 1 ? " (" + cam.name + ")" : "");
-    previewCaption.textContent = fill(strings["tool.preview_title"], { focal: what });
-    preview.hidden = false;
+  function drawText() {
+    var parts = (state.selected || "").split("|");
+    var cams = cameras();
+    var cam = cams.filter(function (c) { return String(c.slot) === parts[1]; })[0];
+    viewerHint.textContent = cam && stage.classList.contains("lens")
+      ? fill(strings["tool.preview_title"], { focal: mm(parseFloat(parts[0])) + (cams.length > 1 ? " (" + cam.name + ")" : "") })
+      : strings["tool.preview_hint"];
+    distanceSummary.textContent = fill(strings["tool.distance_summary"], {
+      distance: typed(state.distance), height: typed(state.subject),
+    });
+    if (state.bodies[1]) body2Box.hidden = false;
+    addBody2.hidden = !body2Box.hidden;
   }
 
   function writeUrl() {
@@ -416,7 +437,7 @@
     syncChips();
     drawFrames();
     drawTable();
-    drawPreview();
+    drawText();
     writeUrl();
   }
 
@@ -447,7 +468,9 @@
         addZoom(ends);
       }
     });
-    if (params.get("u") === "ft") state.unit = "ft";
+    var unit = params.get("u");
+    // Feet for visitors whose browser says US English, unless the link says otherwise.
+    if (unit === "ft" || (!unit && /^en-(US|LR|MM)$/i.test(navigator.language || ""))) state.unit = "ft";
     var d = parseFloat(params.get("d"));
     state.distance = validLength(d) ? d : state.unit === "ft" ? 10 : 3;
     var h = parseFloat(params.get("h"));
@@ -484,12 +507,30 @@
   }
 
   chipsBox.addEventListener("click", function (event) {
-    var chip = event.target.closest(".chip");
+    var chip = event.target.closest("[data-focal]");
     if (chip) toggleFocal(parseFloat(chip.getAttribute("data-focal")));
   });
   zoomsBox.addEventListener("click", function (event) {
-    var chip = event.target.closest(".chip");
+    var chip = event.target.closest("[data-zoom]");
     if (chip) toggleZoom(chip.getAttribute("data-zoom"));
+  });
+  // "+" opens the row for typing another focal length or zoom.
+  function reveals(buttonId, rowId, inputId) {
+    var button = $(buttonId), row = $(rowId);
+    button.addEventListener("click", function () {
+      row.hidden = !row.hidden;
+      button.setAttribute("aria-expanded", row.hidden ? "false" : "true");
+      if (!row.hidden) $(inputId).focus();
+    });
+  }
+  reveals("more-focal", "custom-row", "custom");
+  reveals("more-zoom", "zoom-row", "zoom-from");
+
+  addBody2.addEventListener("click", function () {
+    body2Box.hidden = false;
+    addBody2.hidden = true;
+    addBody2.setAttribute("aria-expanded", "true");
+    bodySelects[1].focus();
   });
 
   $("add").addEventListener("click", function () {
@@ -516,7 +557,12 @@
   enterClicks(zoomTo, "add-zoom");
 
   bodySelects.forEach(function (select, slot) {
-    select.addEventListener("change", function () { state.bodies[slot] = select.value; render(); });
+    select.addEventListener("change", function () {
+      state.bodies[slot] = select.value;
+      // Choosing "None" puts the second camera away again.
+      if (slot === 1 && !select.value) { body2Box.hidden = true; addBody2.setAttribute("aria-expanded", "false"); }
+      render();
+    });
   });
 
   distanceInput.addEventListener("input", function () {
@@ -542,8 +588,34 @@
     var k = row.getAttribute("data-key");
     state.selected = state.selected === k ? null : k;
     render();
-    if (state.selected !== null && !preview.hidden) preview.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    var box = stage.getBoundingClientRect();
+    if (box.top < 0 || box.bottom > window.innerHeight) {
+      var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      stage.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+    }
   });
+
+  // Tapping the photo picks the smallest frame around that spot; in lens view
+  // it goes back to all frames.
+  stage.addEventListener("click", function (event) {
+    if (event.target.closest("button")) return;
+    if (stage.classList.contains("lens")) { state.selected = null; render(); return; }
+    var svg = stage.querySelector("svg.frames");
+    if (!svg) return;
+    var box = svg.getBoundingClientRect();
+    var view = svg.viewBox.baseVal;
+    var px = ((event.clientX - box.left) / box.width) * view.width;
+    var py = ((event.clientY - box.top) / box.height) * view.height;
+    var hit = hits.filter(function (r) { return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h; })[0];
+    if (hit) { state.selected = hit.key; render(); }
+  });
+  lensBack.addEventListener("click", function () { state.selected = null; render(); });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && state.selected !== null) { state.selected = null; render(); }
+  });
+
+  function syncAngles() { resultsBox.classList.toggle("with-angles", showAngles.checked); }
+  showAngles.addEventListener("change", syncAngles);
   results.addEventListener("keydown", function (event) {
     if ((event.key === "Enter" || event.key === " ") && event.target.matches("tr[data-key]")) {
       event.preventDefault();
@@ -582,6 +654,8 @@
       } else if (state.ownUrl) {
         photo.src = state.ownUrl;
         state.photoFocal = parseFloat(photoFocalInput.value) || 26;
+      } else {
+        fileInput.click();
       }
     }
   });
@@ -615,7 +689,12 @@
 
   $("share").addEventListener("click", function () {
     var done = function () { shareStatus.textContent = strings["tool.copied"]; };
-    if (navigator.clipboard) navigator.clipboard.writeText(location.href).then(done, function () {});
+    // Phones get the system share sheet; elsewhere the link goes to the clipboard.
+    if (navigator.share && window.matchMedia("(pointer: coarse)").matches) {
+      navigator.share({ title: document.title, url: location.href }).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(location.href).then(done, function () {});
+    }
   });
 
   readUrl();
@@ -626,6 +705,8 @@
     form.querySelector('input[name="photo"][value="sample-' + state.sample + '"]').checked = true;
     showSample(state.sample);
   }
+  showAngles.checked = window.matchMedia("(min-width: 760px)").matches;
+  syncAngles();
   form.hidden = false;
   var staticFigure = $("static-figure");
   if (staticFigure) staticFigure.hidden = true;
