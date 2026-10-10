@@ -97,6 +97,21 @@ class LensMathTest(unittest.TestCase):
         # Same lens, smaller sensor: tighter frame, so step back by the crop factor.
         self.assertAlmostEqual(lm.distance_to_fit(1.8, 85, 1.5), 1.5 * lm.distance_to_fit(1.8, 85, 1.0))
 
+    def test_focal_to_fit_inverts_distance_to_fit(self):
+        # Head and shoulders at 3 m on full frame, vertical: 3 x 0.9 x 36 / 0.5 = 194.4 mm.
+        self.assertAlmostEqual(lm.focal_to_fit(0.5, 3, 1.0), 194.4)
+        for crop in [0.79, 1.0, 1.5, 1.6, 2.0]:
+            for vertical in [True, False]:
+                f = lm.focal_to_fit(1.8, 4, crop, vertical)
+                self.assertAlmostEqual(lm.distance_to_fit(1.8, f, crop, vertical), 4)
+
+    def test_vertical_frame_swaps_the_sides(self):
+        w, h = lm.frame_in_photo(50, 1.0, 14, 1.5)
+        vw, vh = lm.frame_in_photo(50, 1.0, 14, 1.5, vertical=True)
+        # 24 mm across instead of 36, 36 mm up instead of 24.
+        self.assertAlmostEqual(vw, w * 24 / 36)
+        self.assertAlmostEqual(vh, h * 36 / 24)
+
 
 if __name__ == "__main__":
     unittest.main()

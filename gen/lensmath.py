@@ -53,14 +53,17 @@ def focal_for_equivalent(equivalent_focal, crop):
     return equivalent_focal / crop
 
 
-def frame_in_photo(focal, crop, photo_equivalent, photo_aspect):
+def frame_in_photo(focal, crop, photo_equivalent, photo_aspect, vertical=False):
     """Width and height of a lens's frame as fractions of a photo.
 
     The photo was taken at photo_equivalent (35 mm equivalent, diagonal) with
     photo_aspect = width / height. Both images are treated as rectilinear
     projections, so sizes compare in tangent-plane units (size / focal).
+    A vertical frame puts the sensor's long side upright.
     """
     fw, fh = sensor_size(crop)
+    if vertical:
+        fw, fh = fh, fw
     frame_half_w = fw / 2 / focal
     frame_half_h = fh / 2 / focal
     unit = FULL_FRAME_DIAGONAL / math.hypot(photo_aspect, 1)
@@ -87,6 +90,8 @@ FULL_BODY_M = 1.8
 HEAD_SHOULDERS_M = 0.5
 PORTRAIT_FILL = 0.9
 FOOT_M = 0.3048
+# The person scene in the tool: the camera at eye level.
+EYE_LEVEL_M = 1.5
 
 
 def coverage(focal, crop, distance):
@@ -122,6 +127,15 @@ def format_key(crop):
     if math.isclose(crop, 0.79):
         return "medium"
     raise ValueError("unknown crop factor %s" % crop)
+def focal_to_fit(subject, distance, crop, vertical=True, fill=PORTRAIT_FILL):
+    """The focal length that fits a subject of this height at a distance.
+
+    distance_to_fit solved for the focal length; subject and distance in the
+    same unit.
+    """
+    w, h = sensor_size(crop)
+    upright = w if vertical else h
+    return distance * fill * upright / subject
 
 
 def format_name(crop):
