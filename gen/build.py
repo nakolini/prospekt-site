@@ -19,13 +19,14 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lensmath as lm  # noqa: E402
 
-# The canonical host. Switch to the custom domain once its DNS is live.
-BASE_URL = "https://nakolini.github.io/prospekt-site"
+# The canonical host (custom domain on GitHub Pages, see CNAME).
+BASE_URL = "https://prospekt.nakolini.com"
 
 APP_ID = "6760914468"
 # App Store Connect provider token (the pt= value of a campaign link).
 # Without it the App Store ignores ct= in Analytics.
 PROVIDER_TOKEN = ""
+INDEXNOW_KEY = "ff5e02c36fce19d7d6baf4c02a9d5e1e"
 PRICE = "$3.99"
 THREADS_URL = "https://www.threads.net/@dmytro.builds"
 ANONIMO_URL = "https://apps.apple.com/app/id6762560095"
@@ -63,7 +64,8 @@ DECIMAL_COMMA = {"de", "es", "fr", "it", "nl", "pl", "pt-BR", "ru", "tr", "uk"}
 
 # Generated paths, removed before each build so stale pages never linger.
 GENERATED_DIRS = ["lens-compare", "cameras", "changelog"] + [s for _, s, _ in LANGUAGES if s]
-GENERATED_FILES = ["index.html", "sitemap.xml", "robots.txt", "llms.txt", ".nojekyll"]
+GENERATED_FILES = ["index.html", "sitemap.xml", "robots.txt", "llms.txt", ".nojekyll", "CNAME",
+                   INDEXNOW_KEY + ".txt"]
 
 CHANGELOG = [
     ("1.3.2", "date.oct_3", ["changelog.v1_3_2_1", "changelog.v1_3_2_2"]),
@@ -727,6 +729,9 @@ def build():
     write("robots.txt", ROBOTS.format(base=BASE_URL))
     write("llms.txt", llms_txt(bodies))
     write(".nojekyll", "")
+    write("CNAME", BASE_URL.split("://", 1)[1] + "\n")
+    # IndexNow proves we own the host with a public key file at its root.
+    write(INDEXNOW_KEY + ".txt", INDEXNOW_KEY + "\n")
     return len(ALL_LANGS), len(paths)
 
 

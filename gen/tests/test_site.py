@@ -83,6 +83,12 @@ class SiteTest(unittest.TestCase):
             sitemap = f.read()
         self.assertEqual(sitemap.count("<url>"), len(pages()) + 3)
 
+    def test_custom_domain_and_indexnow_key(self):
+        with open(os.path.join(ROOT, "CNAME")) as f:
+            self.assertEqual("https://" + f.read().strip(), build.BASE_URL)
+        with open(os.path.join(ROOT, build.INDEXNOW_KEY + ".txt")) as f:
+            self.assertEqual(f.read().strip(), build.INDEXNOW_KEY)
+
 
 if __name__ == "__main__":
     unittest.main()

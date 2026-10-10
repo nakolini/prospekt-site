@@ -30,13 +30,14 @@ Python 3.9+ standard library only. No dependencies.
 - `data/bodies.json`: generated from the app's `CameraBody.curated`; never edit by hand. `data/mounts.json`: lens mount per body, edited by hand. The tests fail if a body has no mount entry.
 - `i18n/<lang>.json`: all page copy. `en.json` is the source; every other file must have the same keys and `{placeholders}` (tested).
 - `support.html`, `privacy.html`, `terms.html`: hand-written, English only, linked from the App Store listing. Don't move them.
-- Everything else at the root (`index.html`, `lens-compare/`, `cameras/`, `changelog/`, `<lang>/`, `sitemap.xml`, `robots.txt`, `llms.txt`) is generated. Edit the generator, not the output.
+- Everything else at the root (`index.html`, `CNAME`, the IndexNow key file, `lens-compare/`, `cameras/`, `changelog/`, `<lang>/`, `sitemap.xml`, `robots.txt`, `llms.txt`) is generated. Edit the generator, not the output.
 
 ## Changing things
 
 - **New camera in the app:** `make bodies`, add its mount to `data/mounts.json`, `make build`.
 - **New app version:** add the notes to `CHANGELOG` in `gen/build.py` and the strings to every `i18n/*.json`.
 - **Copy change:** edit `i18n/en.json`, then update the same key in every other language.
-- **Custom domain:** add the DNS record first, then set the domain in the repo's Pages settings (a `CNAME` file), then change `BASE_URL` and rebuild. Doing it in the other order makes the github.io URL redirect to a host that doesn't resolve.
+- **Domain:** the site is served at `https://prospekt.nakolini.com` (Cloudflare CNAME `prospekt` → `nakolini.github.io`, DNS only). `BASE_URL` in `gen/build.py` drives canonical URLs, hreflang, the sitemap and the generated `CNAME` file; GitHub redirects the old `nakolini.github.io/prospekt-site/` URLs there.
+- **Search engines:** after a deploy that adds or renames pages, run `python3 scripts/indexnow.py` to notify Bing, Yandex, Seznam and Naver (the `<key>.txt` file at the root proves ownership). Google reads `sitemap.xml` from `robots.txt`; submit it once in Search Console.
 
 Sample photo: [Montmorency station entrance](https://commons.wikimedia.org/wiki/File:Montmorency_station_entrance,_October_13,_2021.jpg) by D. Benjamin Miller, CC0 (Canon EOS R5, 14 mm).

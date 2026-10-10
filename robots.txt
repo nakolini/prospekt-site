@@ -26,4 +26,4 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
-Sitemap: https://nakolini.github.io/prospekt-site/sitemap.xml
+Sitemap: https://prospekt.nakolini.com/sitemap.xml
