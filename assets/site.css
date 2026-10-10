@@ -8,6 +8,7 @@
   --gold-ink: #1a1a1a;
   /* The second camera in the tool: magenta reads on photos and on the dark page, and is far from gold. */
   --second: #ff6bd6;
+  --error: #ff8a80;
   --radius: 12px;
   color-scheme: dark;
 }
@@ -116,7 +117,10 @@ table.price { width: auto; }
 table.angles tr.group th { color: var(--text); background: transparent; padding-top: 14px; }
 table.angles tbody + tbody tr.group th { border-top: 1px solid var(--line); }
 .zoom-tag { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
-table.angles td, table.distances td { white-space: nowrap; }
+table.angles td, table.distances td, table.equiv td { white-space: nowrap; }
+/* A row's focal length is a button that opens its lens view. */
+.row-pick { padding: 0; border: 0; border-radius: 4px; background: none; color: inherit; font: inherit; font-weight: 600; text-align: start; }
+.row-pick:hover { background: none; }
 
 .faq h3 { color: var(--text); }
 
@@ -134,7 +138,17 @@ select, input[type="number"] {
 }
 select { width: 100%; margin-top: 6px; }
 input[type="number"] { width: 6.5em; }
-input[type="file"] { color: var(--muted); margin-block: 6px; max-width: 100%; }
+input[type="file"] { color: var(--muted); margin-block: 6px; max-width: 100%; font-size: 0.92rem; }
+input[type="file"]::file-selector-button {
+  font: inherit; font-weight: 600; cursor: pointer; margin-inline-end: 10px; padding: 6px 14px;
+  color: var(--gold); background: transparent; border: 1px solid var(--gold); border-radius: 999px;
+}
+input[type="file"]::file-selector-button:hover { background: rgba(240, 191, 64, 0.12); }
+input[aria-invalid="true"] { border-color: var(--error); }
+/* Empty messages stay in the page, so screen readers hear them when they fill. */
+.field-error { color: var(--error); font-size: 0.88rem; flex-basis: 100%; margin: 6px 0 0; }
+.field-note { color: var(--text); font-size: 0.88rem; margin: 6px 0 0; }
+.field-error:empty, .field-note:empty { flex-basis: 0; margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { padding: 6px 12px; font-weight: 600; font-size: 0.95rem; border-radius: 999px; min-width: 3.2em; }
 .chip[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink); }
@@ -258,6 +272,11 @@ details.distance .segmented { margin: 8px 8px 4px 0; }
   .scroller > * { flex: none; }
 }
 
+/* Tablets: the pinned viewer, with its notes, stays under half the screen. */
+@media (min-width: 601px) and (max-width: 959px) and (min-height: 600px) {
+  #stage { max-width: calc(34vh * var(--aspect, 1.5)); }
+}
+
 /* Wide screens: the page widens, the photo sits beside the controls and stays in view. */
 @media (min-width: 960px) {
   body:has(#tool) .wrap { max-width: 1212px; }
@@ -276,10 +295,19 @@ details.distance .segmented { margin: 8px 8px 4px 0; }
 .site-footer a { color: var(--muted); }
 .credit { font-size: 0.82rem; }
 
+/* Frame labels are in photo units (1000 across), so they grow as the photo
+   narrows; lens-compare.js places them again when these widths are crossed. */
+@media (max-width: 1100px) {
+  svg.frames text { font-size: 30px; }
+  svg.frames text.outside-label { font-size: 28px; }
+}
 @media (max-width: 600px) {
   svg.frames text { font-size: 40px; }
   svg.frames text.outside-label { font-size: 34px; }
 }
+
+/* The tool's script hides the no-script figure; this keeps its photo from loading first. */
+.js #static-figure { display: none; }
 
 @media (prefers-reduced-motion: no-preference) {
   .button, button, .chip { transition: background-color 0.15s, color 0.15s; }
