@@ -24,6 +24,8 @@
   "footer.privacy": "Конфиденциальность",
   "footer.terms": "Условия",
   "footer.photo_credit": "Пример фото: D. Benjamin Miller, CC0, Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: симулятор объектива для iPhone. Какой кадр даст любой объектив на вашей камере",
   "home.description": "Prospekt — симулятор объектива для iPhone: живой видоискатель показывает, какой кадр даёт объектив от 14 до 300 mm на вашей камере. 59 камер, {price} один раз, работает офлайн.",
@@ -115,6 +117,8 @@
   "tool.add": "Добавить",
   "tool.photo_label": "Фото",
   "tool.photo_sample": "Пример фото (полный кадр, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Использовать своё фото",
   "tool.photo_focal_label": "Фокусное расстояние вашего фото в эквиваленте 35 mm",
   "tool.photo_focal_hint": "Его можно найти в сведениях о фото. У сверхширокоугольной камеры iPhone (0,5x) около 13 mm, у основной примерно от 24 до 26 mm.",

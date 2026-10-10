@@ -24,6 +24,8 @@
   "footer.privacy": "Datenschutz",
   "footer.terms": "Nutzungsbedingungen",
   "footer.photo_credit": "Beispielfoto: D. Benjamin Miller, CC0, über Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: Objektiv-Simulator fürs iPhone. Sieh, was jedes Objektiv an deiner Kamera zeigt",
   "home.description": "Prospekt ist ein Objektiv-Simulator fürs iPhone: ein Live-Sucher, der zeigt, welchen Bildausschnitt ein Objektiv mit 14 bis 300 mm an deiner Kamera hat. 59 Kameras, {price} einmalig, offline.",
@@ -115,6 +117,8 @@
   "tool.add": "Hinzufügen",
   "tool.photo_label": "Foto",
   "tool.photo_sample": "Beispielfoto (Vollformat, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Eigenes Foto verwenden",
   "tool.photo_focal_label": "Brennweite deines Fotos, Kleinbild-Äquivalent",
   "tool.photo_focal_hint": "Steht in den Fotodetails. Die Ultraweitwinkelkamera des iPhones (0,5x) hat etwa 13 mm, die Hauptkamera etwa 24 bis 26 mm.",

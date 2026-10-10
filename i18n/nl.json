@@ -24,6 +24,8 @@
   "footer.privacy": "Privacy",
   "footer.terms": "Voorwaarden",
   "footer.photo_credit": "Voorbeeldfoto: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: lenssimulator voor iPhone. Zie wat elke lens op je camera in beeld brengt",
   "home.description": "Prospekt is een lenssimulator voor iPhone: een live zoeker die laat zien wat een lens van 14 tot 300 mm op je camerabody in beeld brengt. 59 body's, {price} eenmalig, werkt offline.",
@@ -115,6 +117,8 @@
   "tool.add": "Toevoegen",
   "tool.photo_label": "Foto",
   "tool.photo_sample": "Voorbeeldfoto (full frame, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Eigen foto gebruiken",
   "tool.photo_focal_label": "Brandpuntsafstand van je foto, 35 mm-equivalent",
   "tool.photo_focal_hint": "Staat in de details van de foto. De ultragroothoek van de iPhone (0,5x) is ongeveer 13 mm, de hoofdcamera ongeveer 24 tot 26 mm.",

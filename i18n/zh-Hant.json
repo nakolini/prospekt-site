@@ -24,6 +24,8 @@
   "footer.privacy": "隱私權政策",
   "footer.terms": "使用條款",
   "footer.photo_credit": "範例照片：D. Benjamin Miller，CC0，來自 Wikimedia Commons（Canon EOS R5，14 mm）。",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt：iPhone 鏡頭模擬器，預覽任何鏡頭在你相機上的取景",
   "home.description": "Prospekt 是一款 iPhone 鏡頭模擬器：即時取景器，顯示 14 至 300 mm 鏡頭在你的相機機身上拍到的範圍。59 款機身，一次付費 {price}，離線可用。",
@@ -115,6 +117,8 @@
   "tool.add": "加入",
   "tool.photo_label": "照片",
   "tool.photo_sample": "範例照片（全片幅，14 mm）",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "使用我自己的照片",
   "tool.photo_focal_label": "你的照片的焦距（35mm 等效）",
   "tool.photo_focal_hint": "可以在照片的詳細資訊中找到。iPhone 超廣角（0.5x）約為 13 mm，主鏡頭約為 24 至 26 mm。",

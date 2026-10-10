@@ -36,6 +36,12 @@ EXPENNY_URL = "https://apps.apple.com/app/id6758223013"
 SAMPLES = [
     {"src": "assets/sample-14mm.jpg", "small": "assets/sample-14mm-1200.jpg", "width": 1920, "height": 1280,
      "focal": 14.0, "label_key": "tool.photo_sample", "credit_key": "footer.photo_credit"},
+    # Canon EOS R5 at 10 mm, trimmed from 8192 to 8013 px wide on Commons: 10 x 8192 / 8013.
+    {"src": "assets/sample-10mm.jpg", "small": None, "width": 1920, "height": 1280,
+     "focal": 10.2, "label_key": "tool.photo_sample_10", "credit_key": "footer.photo_credit_10"},
+    # Canon EOS 5D Mark IV at 20 mm, full 6720 x 4480 frame.
+    {"src": "assets/sample-20mm.jpg", "small": None, "width": 1920, "height": 1280,
+     "focal": 20.0, "label_key": "tool.photo_sample_20", "credit_key": "footer.photo_credit_20"},
 ]
 SAMPLE = SAMPLES[0]
 
@@ -299,7 +305,8 @@ def render(lang, page):
         '<script type="application/ld+json">%s</script>\n' % json.dumps(block, ensure_ascii=False).replace("</", "<\\/")
         for block in page.jsonld)
     # Credit every sample photo the page shows or offers.
-    credits = [s["credit_key"] for s in SAMPLES if s["src"] in page.body or s["small"] in page.body]
+    credits = [s["credit_key"] for s in SAMPLES
+               if s["src"] in page.body or (s["small"] and s["small"] in page.body)]
     return """<!doctype html>
 <html lang="{code}" dir="{dir}">
 <head>

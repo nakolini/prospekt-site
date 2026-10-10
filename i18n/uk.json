@@ -24,6 +24,8 @@
   "footer.privacy": "Конфіденційність",
   "footer.terms": "Умови",
   "footer.photo_credit": "Приклад фото: D. Benjamin Miller, CC0, Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: симулятор об'єктива для iPhone. Який кадр дасть будь-який об'єктив на вашій камері",
   "home.description": "Prospekt — симулятор об'єктива для iPhone: живий видошукач показує, який кадр дає об'єктив від 14 до 300 mm на вашій камері. 59 камер, {price} один раз, працює офлайн.",
@@ -115,6 +117,8 @@
   "tool.add": "Додати",
   "tool.photo_label": "Фото",
   "tool.photo_sample": "Приклад фото (повний кадр, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Використати власне фото",
   "tool.photo_focal_label": "Фокусна відстань вашого фото в еквіваленті 35 mm",
   "tool.photo_focal_hint": "Її можна знайти в інформації про фото. У надширококутної камери iPhone (0,5x) близько 13 mm, в основної приблизно від 24 до 26 mm.",

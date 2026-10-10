@@ -24,6 +24,8 @@
   "footer.privacy": "개인정보 처리방침",
   "footer.terms": "이용약관",
   "footer.photo_credit": "샘플 사진: D. Benjamin Miller, CC0, Wikimedia Commons 제공 (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: iPhone 렌즈 시뮬레이터. 내 카메라에서 렌즈 화각 미리 보기",
   "home.description": "Prospekt는 iPhone용 렌즈 시뮬레이터예요. 14~300 mm 렌즈가 내 카메라 바디에서 담는 화각을 실시간 뷰파인더로 보여 줘요. 바디 59종, {price} 한 번 결제, 오프라인 작동.",
@@ -115,6 +117,8 @@
   "tool.add": "추가",
   "tool.photo_label": "사진",
   "tool.photo_sample": "샘플 사진 (풀프레임, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "내 사진 사용",
   "tool.photo_focal_label": "내 사진의 초점거리, 35mm 환산",
   "tool.photo_focal_hint": "사진 정보에서 확인할 수 있어요. iPhone 초광각(0.5x)은 약 13 mm, 기본 카메라는 약 24~26 mm예요.",

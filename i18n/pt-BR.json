@@ -24,6 +24,8 @@
   "footer.privacy": "Privacidade",
   "footer.terms": "Termos",
   "footer.photo_credit": "Foto de exemplo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: simulador de lentes para iPhone. Veja o que cada lente enquadra na sua câmera",
   "home.description": "Prospekt é um simulador de lentes para iPhone: um visor ao vivo que mostra o que uma lente de 14 a 300 mm enquadra no corpo da sua câmera. 59 corpos, {price} uma única vez, funciona offline.",
@@ -115,6 +117,8 @@
   "tool.add": "Adicionar",
   "tool.photo_label": "Foto",
   "tool.photo_sample": "Foto de exemplo (full frame, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Usar minha própria foto",
   "tool.photo_focal_label": "Distância focal da sua foto, equivalente em 35 mm",
   "tool.photo_focal_hint": "Aparece nos detalhes da foto. A ultra-angular do iPhone (0,5x) tem cerca de 13 mm, e a câmera principal, de 24 a 26 mm.",

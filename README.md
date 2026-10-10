@@ -5,8 +5,8 @@ The website for [Prospekt](https://apps.apple.com/app/id6760914468), the iPhone 
 It has four kinds of pages, in 16 languages (the app's own), all plain HTML that reads fine without JavaScript:
 
 - `/`: what the app does, price, privacy, limits, an honest comparison, FAQ.
-- `/lens-compare/`: a free lens comparison tool. Pick a body and focal lengths and see the frames over a photo (the sample, or your own; it never leaves the browser). Links are shareable: `/lens-compare/?body=fujifilm-x-t5&f=23,33,56`.
-- `/cameras/` and `/cameras/<body>/`: focal length, full-frame equivalent and angle-of-view tables for every body in the app.
+- `/lens-compare/`: a free lens comparison tool. Pick a body (and optionally a second one), focal lengths or zooms, and see the frames over a photo (a sample, or your own; it never leaves the browser), with what each lens covers at a subject distance and how far to stand to fit a subject. Links are shareable: `/lens-compare/?body=fujifilm-x-t5&f=23,33,56&d=3&u=m`.
+- `/cameras/` and `/cameras/<body>/`: focal length, full-frame equivalent and angle-of-view tables for every body in the app, plus what 24-135 mm cover at 1-10 m and portrait distances.
 - `/changelog/`: every release.
 
 English is at the root, other languages under `/<lang>/` (`/de/`, `/pt-br/`, `/zh-hans/`...), linked with hreflang.
@@ -40,4 +40,8 @@ Python 3.9+ standard library only. No dependencies.
 - **Domain:** the site is served at `https://prospekt.nakolini.com` (Cloudflare CNAME `prospekt` → `nakolini.github.io`, DNS only). `BASE_URL` in `gen/build.py` drives canonical URLs, hreflang, the sitemap and the generated `CNAME` file; GitHub redirects the old `nakolini.github.io/prospekt-site/` URLs there.
 - **Search engines:** after a deploy that adds or renames pages, run `python3 scripts/indexnow.py` to notify Bing, Yandex, Seznam and Naver (the `<key>.txt` file at the root proves ownership). Google reads `sitemap.xml` from `robots.txt`; submit it once in Search Console.
 
-Sample photo: [Montmorency station entrance](https://commons.wikimedia.org/wiki/File:Montmorency_station_entrance,_October_13,_2021.jpg) by D. Benjamin Miller, CC0 (Canon EOS R5, 14 mm).
+Sample photos (`SAMPLES` in `gen/build.py`, each credited in the footer of pages that show it):
+
+- [Montmorency station entrance](https://commons.wikimedia.org/wiki/File:Montmorency_station_entrance,_October_13,_2021.jpg) by D. Benjamin Miller, CC0 (Canon EOS R5, 14 mm).
+- [David Geffen Hall with fountain in the foreground](https://commons.wikimedia.org/wiki/File:David_Geffen_Hall_with_fountain_in_the_foreground,_March_14,_2024.jpg) by D. Benjamin Miller, CC0 (Canon EOS R5, 10 mm; trimmed slightly on Commons, so the tool uses 10.2 mm).
+- [Liqeni Artificial i Tiranës 05](https://commons.wikimedia.org/wiki/File:Liqeni_Artificial_i_Tiran%C3%ABs_05_-_%C2%A9_Shk%C3%ABlzen_Rexha.jpg) by Shkelzen A. Rexha, CC0 (Canon EOS 5D Mark IV, 20 mm).

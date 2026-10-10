@@ -24,6 +24,8 @@
   "footer.privacy": "Gizlilik",
   "footer.terms": "Koşullar",
   "footer.photo_credit": "Örnek fotoğraf: D. Benjamin Miller, CC0, Wikimedia Commons üzerinden (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: iPhone için lens simülatörü. Her lensin kameranızda neyi kadrajladığını görün",
   "home.description": "Prospekt bir iPhone lens simülatörü: 14 ile 300 mm arası bir lensin kamera gövdenizde neyi kadrajladığını gösteren canlı bir vizör. 59 gövde, tek seferlik {price}, çevrimdışı çalışır.",
@@ -115,6 +117,8 @@
   "tool.add": "Ekle",
   "tool.photo_label": "Fotoğraf",
   "tool.photo_sample": "Örnek fotoğraf (full frame, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Kendi fotoğrafımı kullan",
   "tool.photo_focal_label": "Fotoğrafınızın odak uzaklığı, 35 mm karşılığı",
   "tool.photo_focal_hint": "Fotoğrafın ayrıntılarında yazar. iPhone'un ultra geniş kamerası (0,5x) yaklaşık 13 mm, ana kamerası yaklaşık 24 ile 26 mm arasıdır.",

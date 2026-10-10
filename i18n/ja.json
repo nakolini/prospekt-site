@@ -24,6 +24,8 @@
   "footer.privacy": "プライバシー",
   "footer.terms": "利用規約",
   "footer.photo_credit": "サンプル写真：D. Benjamin Miller、CC0、Wikimedia Commonsより（Canon EOS R5、14 mm）。",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt：iPhone用レンズシミュレーター。どのレンズでどう写るかを自分のカメラで確認",
   "home.description": "ProspektはiPhone用のレンズシミュレーターです。14〜300 mmのレンズがあなたのカメラボディでどこまで写るかを、ライブビューで表示します。59機種対応、{price}の買い切り、オフラインで使えます。",
@@ -115,6 +117,8 @@
   "tool.add": "追加",
   "tool.photo_label": "写真",
   "tool.photo_sample": "サンプル写真（フルサイズ、14 mm）",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "自分の写真を使う",
   "tool.photo_focal_label": "写真の焦点距離（35mm判換算）",
   "tool.photo_focal_hint": "写真の詳細情報で確認できます。iPhoneの超広角（0.5x）は約13 mm、メインカメラは約24〜26 mmです。",

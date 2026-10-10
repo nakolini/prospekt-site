@@ -24,6 +24,8 @@
   "footer.privacy": "Confidentialité",
   "footer.terms": "Conditions",
   "footer.photo_credit": "Photo d'exemple : D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt : simulateur d'objectif pour iPhone. Vois ce que cadre chaque focale sur ton boîtier",
   "home.description": "Prospekt est un simulateur d'objectif pour iPhone : un viseur en direct qui montre ce que cadre un objectif de 14 à 300 mm sur ton boîtier. 59 boîtiers, {price} une seule fois, hors ligne.",
@@ -115,6 +117,8 @@
   "tool.add": "Ajouter",
   "tool.photo_label": "Photo",
   "tool.photo_sample": "Photo d'exemple (plein format, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Utiliser ma propre photo",
   "tool.photo_focal_label": "Focale de ta photo, en équivalent 35 mm",
   "tool.photo_focal_hint": "Elle figure dans les infos de la photo. L'ultra grand-angle de l'iPhone (0,5x) fait environ 13 mm, la caméra principale environ 24 à 26 mm.",

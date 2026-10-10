@@ -24,6 +24,8 @@
   "footer.privacy": "Prywatność",
   "footer.terms": "Regulamin",
   "footer.photo_credit": "Zdjęcie przykładowe: D. Benjamin Miller, CC0, z Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: symulator obiektywu na iPhone'a. Zobacz, co obejmie obiektyw na twoim aparacie",
   "home.description": "Prospekt to symulator obiektywów na iPhone'a: wizjer na żywo, który pokazuje, co obiektyw od 14 do 300 mm obejmie na twoim korpusie. 59 korpusów, {price} jednorazowo, działa offline.",
@@ -115,6 +117,8 @@
   "tool.add": "Dodaj",
   "tool.photo_label": "Zdjęcie",
   "tool.photo_sample": "Przykładowe zdjęcie (pełna klatka, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Użyj własnego zdjęcia",
   "tool.photo_focal_label": "Ogniskowa twojego zdjęcia, ekwiwalent 35 mm",
   "tool.photo_focal_hint": "Znajdziesz ją w szczegółach zdjęcia. Aparat ultraszerokokątny iPhone'a (0,5x) to około 13 mm, główny około 24 do 26 mm.",

@@ -24,6 +24,8 @@
   "footer.privacy": "Privacy",
   "footer.terms": "Termini",
   "footer.photo_credit": "Foto di esempio: D. Benjamin Miller, CC0, tramite Wikimedia Commons (Canon EOS R5, 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: simulatore di obiettivi per iPhone. Guarda cosa inquadra un obiettivo sulla tua fotocamera",
   "home.description": "Prospekt è un simulatore di obiettivi per iPhone: un mirino dal vivo che mostra cosa inquadra un obiettivo da 14 a 300 mm sul tuo corpo macchina. 59 fotocamere, {price} una volta sola, offline.",
@@ -115,6 +117,8 @@
   "tool.add": "Aggiungi",
   "tool.photo_label": "Foto",
   "tool.photo_sample": "Foto di esempio (full frame, 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "Usa una mia foto",
   "tool.photo_focal_label": "Lunghezza focale della tua foto, equivalente 35 mm",
   "tool.photo_focal_hint": "La trovi nei dettagli della foto. L'ultra grandangolo dell'iPhone (0,5x) è circa 13 mm, la fotocamera principale circa 24-26 mm.",

@@ -24,6 +24,8 @@
   "footer.privacy": "الخصوصية",
   "footer.terms": "الشروط",
   "footer.photo_credit": "صورة المثال: D. Benjamin Miller، برخصة CC0، عبر Wikimedia Commons (Canon EOS R5، 14 mm).",
+  "footer.photo_credit_10": "Sample photo: D. Benjamin Miller, CC0, via Wikimedia Commons (Canon EOS R5, 10 mm).",
+  "footer.photo_credit_20": "Sample photo: Shkelzen A. Rexha, CC0, via Wikimedia Commons (Canon EOS 5D Mark IV, 20 mm).",
 
   "home.title": "Prospekt: محاكي عدسات لـ iPhone. شاهد ما تؤطّره أي عدسة على كاميرتك",
   "home.description": "Prospekt محاكي عدسات على iPhone: مُعين منظر حي يُظهر ما تؤطّره عدسة من 14 إلى 300 mm على هيكل كاميرتك. 59 هيكلًا، بسعر {price} مرة واحدة، ويعمل دون إنترنت.",
@@ -115,6 +117,8 @@
   "tool.add": "إضافة",
   "tool.photo_label": "الصورة",
   "tool.photo_sample": "صورة المثال (إطار كامل، 14 mm)",
+  "tool.photo_sample_10": "Plaza with people (full frame, 10 mm)",
+  "tool.photo_sample_20": "Lake and towers (full frame, 20 mm)",
   "tool.photo_own": "استخدام صورتي",
   "tool.photo_focal_label": "البعد البؤري لصورتك، بما يعادل 35 mm",
   "tool.photo_focal_hint": "تجده في تفاصيل الصورة. الكاميرا فائقة الاتساع في iPhone (0.5x) نحو 13 mm، والكاميرا الرئيسية من 24 إلى 26 mm تقريبًا.",
