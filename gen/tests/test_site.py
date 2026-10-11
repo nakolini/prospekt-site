@@ -45,7 +45,8 @@ def pages():
 class SiteTest(unittest.TestCase):
     def test_page_count(self):
         langs = len(build.load_languages())
-        self.assertEqual(len(pages()), langs * (4 + 59))
+        # Home, tool, cameras, changelog, 59 cameras, the guides hub, comparisons and guides.
+        self.assertEqual(len(pages()), langs * (4 + 59 + 1 + len(build.COMPARISONS) + len(build.GUIDES)))
 
     def test_every_page_is_complete_without_javascript(self):
         for path in pages():
@@ -135,6 +136,90 @@ class SiteTest(unittest.TestCase):
         # The camera list is in the tool's JSON, so its quotes are escaped.
         self.assertIn('data-label=\\"Full frame, 1x\\"', text)
         self.assertIn('<table class="equiv">', text)
+
+    def test_comparison_pages(self):
+        for pair in build.COMPARISONS:
+            path = os.path.join(ROOT, build.compare_path(pair), "index.html")
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(pair=pair["a"]):
+                self.assertIn('href="../../lens-compare/?f=%d,%d"' % (pair["a"], pair["b"]), text)
+                self.assertEqual(text.count("ct=web_compare_line"), 1)
+                self.assertEqual(text.count('class="app-line"'), 1)
+                self.assertEqual(re.search(r'<table class="pair">.*?</table>', text, re.S).group(0).count('class="group"'),
+                                 len(build.FORMAT_CROPS))
+                faq = re.search(r'"@type": "FAQPage".*?</script>', text, re.S).group(0)
+                self.assertEqual(faq.count('"@type": "Question"'), 3)
+                self.assertIn('"mentions": {"@type": "MobileApplication", "@id": "%s"' % build.APP_ENTITY_ID, text)
+                self.assertIn('"@type": "BreadcrumbList"', text)
+                self.assertIn('href="../../guides/"', text)
+        # 35 mm at 3 m on full frame: 3.1 x 2.1 m; 50 mm full body at 2.8 m; 23 and 33 mm on APS-C.
+        with open(os.path.join(ROOT, "compare", "35mm-vs-50mm", "index.html"), encoding="utf-8") as f:
+            text = f.read()
+        self.assertIn("<h1>35 mm vs 50 mm: which should you choose?</h1>", text)
+        self.assertIn("35 mm sees 54.4° across and covers 3.1\u00a0\u00d7 2.1\u00a0m at 3 m", text)
+        self.assertIn("about 1.9\u00a0m (6.4\u00a0ft) with 35 mm and 2.8\u00a0m (9.1\u00a0ft) with 50 mm", text)
+        self.assertIn("use about 23 mm and 33 mm", text)
+
+    def test_guide_pages(self):
+        for guide in build.GUIDES:
+            with open(os.path.join(ROOT, build.guide_path(guide), "index.html"), encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(guide=guide["slug"]):
+                focals = ",".join(str(f) for f in sorted(guide["recs"]))
+                self.assertIn('href="../../lens-compare/?f=%s"' % focals, text)
+                self.assertEqual(text.count("ct=web_guide_line"), 1)
+                self.assertEqual(re.search(r'<table class="recs">.*?</table>', text, re.S).group(0).count("<tr>"),
+                                 1 + len(guide["recs"]))
+                faq = re.search(r'"@type": "FAQPage".*?</script>', text, re.S).group(0)
+                self.assertEqual(faq.count('"@type": "Question"'), 3)
+                self.assertEqual('<ul class="portraits">' in text, bool(guide.get("portraits")))
+        with open(os.path.join(ROOT, "focal-length", "portraits", "index.html"), encoding="utf-8") as f:
+            text = f.read()
+        # 85 mm on 1.5x is 56.7 mm: the 56 mm lens; on 2x exactly the 42.5 mm lens.
+        self.assertIn("On APS-C, 56 mm frames about the same, and on Micro Four Thirds, 42.5 mm.", text)
+        # 56 mm on Canon's 1.6x frames like 89.6 mm, so the table says so.
+        self.assertIn("<td>56 mm<br><span class=\"muted\">frames like 90 mm</span></td>", text)
+
+    def test_guides_are_linked(self):
+        with open(os.path.join(ROOT, "guides", "index.html"), encoding="utf-8") as f:
+            hub = f.read()
+        for pair in build.COMPARISONS:
+            self.assertIn('href="../%s"' % build.compare_path(pair), hub)
+        for guide in build.GUIDES:
+            self.assertIn('href="../%s"' % build.guide_path(guide), hub)
+        for page, home in [("index.html", ""), ("lens-compare/index.html", "../"),
+                           ("cameras/sony-a7-iv/index.html", "../../")]:
+            with open(os.path.join(ROOT, page), encoding="utf-8") as f:
+                text = f.read()
+            with self.subTest(page=page):
+                self.assertIn('href="%scompare/35mm-vs-50mm/"' % home, text)
+                self.assertIn('href="%sguides/"' % home, text)
+        with open(os.path.join(ROOT, "llms.txt"), encoding="utf-8") as f:
+            llms = f.read()
+        self.assertIn("## Guides", llms)
+        for path in [build.compare_path(p) for p in build.COMPARISONS] + [build.guide_path(g) for g in build.GUIDES]:
+            self.assertIn("(%s/%s): " % (build.BASE_URL, path), llms)
+
+    def test_not_found_page(self):
+        with open(os.path.join(ROOT, "404.html"), encoding="utf-8") as f:
+            text = f.read()
+        parser = Links()
+        parser.feed(text)
+        self.assertIn('<meta name="robots" content="noindex">', text)
+        self.assertIsNone(parser.canonical)
+        self.assertEqual(parser.hreflangs, [])
+        # Served at any path, so every local link starts at the site root.
+        for href in parser.hrefs:
+            if re.match(r"^(https?:|mailto:|#)", href):
+                continue
+            self.assertTrue(href.startswith("/"), href)
+            target = os.path.join(ROOT, href.split("?")[0].lstrip("/"))
+            if target.endswith("/"):
+                target = os.path.join(target, "index.html")
+            self.assertTrue(os.path.exists(target), "broken link %s" % href)
+        for href in ["/", "/lens-compare/", "/cameras/", "/guides/"]:
+            self.assertIn('<a href="%s">' % href, text)
 
     def test_price_is_in_the_html(self):
         with open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
