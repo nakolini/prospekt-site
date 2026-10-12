@@ -329,11 +329,11 @@ def header(lang, root, path):
         for other in ALL_LANGS)
     return """<a class="skip" href="#main">{skip}</a>
 <header class="site-header"><div class="wrap bar">
-<a class="brand" href="{home}">Prospekt</a>
+<a class="brand" href="{home}"><img src="{root}assets/icon-192.png" width="28" height="28" alt="">Prospekt</a>
 <nav aria-label="Prospekt"><a href="{home}lens-compare/">{tool}</a><a href="{home}cameras/">{cameras}</a><a class="nav-app" href="{app}">{get}</a></nav>
 <details class="lang"><summary>{langlabel}: {langname}</summary><ul>{switch}</ul></details>
 </div></header>""".format(
-        skip=lang.t("nav.skip"), home=home, tool=lang.t("nav.tool"), cameras=lang.t("nav.cameras"),
+        skip=lang.t("nav.skip"), home=home, root=root, tool=lang.t("nav.tool"), cameras=lang.t("nav.cameras"),
         app=e(app_store_url("web_nav")), get=lang.t("nav.get_app"), langlabel=lang.t("nav.language"),
         langname=e(lang.name), switch=switch)
 
@@ -390,6 +390,9 @@ def render(lang, page):
 <meta name="description" content="{description}">
 {links}<meta name="theme-color" content="#1a1a1a">
 <meta name="apple-itunes-app" content="app-id={app_id}">
+<link rel="icon" href="{root}favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="192x192" href="{root}assets/icon-192.png">
+<link rel="apple-touch-icon" href="{root}assets/apple-touch-icon.png">
 <link rel="stylesheet" href="{root}{css}">
 {extra_head}{jsonld}</head>
 <body>
@@ -456,6 +459,7 @@ def organization_jsonld():
 
 # One identity for the app on every page, so a page about lenses is tied to Prospekt.
 APP_ENTITY_ID = BASE_URL + "/#app"
+APP_ICON_URL = BASE_URL + "/assets/icon-512.png"
 
 
 def app_ref_jsonld(lang):
@@ -467,6 +471,7 @@ def app_ref_jsonld(lang):
         "operatingSystem": "iOS 17.0 or later",
         "applicationCategory": "PhotographyApplication",
         "url": BASE_URL + "/",
+        "image": APP_ICON_URL,
         "downloadUrl": "https://apps.apple.com/app/id%s" % APP_ID,
         "softwareVersion": STORE["en"]["version"],
         "offers": {"@type": "Offer", "price": "3.99", "priceCurrency": "USD"},
@@ -485,6 +490,7 @@ def app_jsonld(lang):
         "operatingSystem": "iOS 17.0 or later",
         "applicationCategory": "PhotographyApplication",
         "url": BASE_URL + "/",
+        "image": APP_ICON_URL,
         "softwareVersion": STORE["en"]["version"],
         "dateModified": STORE["en"]["released"],
         "downloadUrl": "https://apps.apple.com/app/id%s" % APP_ID,

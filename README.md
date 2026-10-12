@@ -34,7 +34,8 @@ Python 3.9+ standard library only. No dependencies.
 - `data/bodies.json`: generated from the app's `CameraBody.curated`; never edit by hand. `data/mounts.json`: lens mount per body, edited by hand. The tests fail if a body has no mount entry.
 - `i18n/<lang>.json`: all page copy. `en.json` is the source; every other file must have the same keys and `{placeholders}` (tested).
 - `support.html`, `privacy.html`, `terms.html`: hand-written, English only, linked from the App Store listing. Don't move them.
-- Everything else at the root (`index.html`, `CNAME`, the IndexNow key file, `lens-compare/`, `cameras/`, `changelog/`, `<lang>/`, `sitemap.xml`, `robots.txt`, `llms.txt`) is generated. Edit the generator, not the output.
+- `favicon.ico` and `assets/icon-*.png`, `assets/apple-touch-icon.png`: the app icon for browser tabs, the header logo, home-screen bookmarks and the app's JSON-LD `image`. Made from the app's `AppIcon.png` (1024 px, square) with ImageMagick: the PNGs and the `.ico` get iOS-style rounded corners (radius 22.4 % of the side) over transparency, the touch icon stays square because iOS rounds it itself.
+- Everything else at the root except `favicon.ico` (`index.html`, `CNAME`, the IndexNow key file, `lens-compare/`, `cameras/`, `changelog/`, `<lang>/`, `sitemap.xml`, `robots.txt`, `llms.txt`) is generated. Edit the generator, not the output.
 
 ## Changing things
 

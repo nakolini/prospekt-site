@@ -36,7 +36,9 @@ a:hover { text-decoration-thickness: 2px; }
 
 .site-header { border-bottom: 1px solid var(--line); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-block: 12px; }
-.brand { font-weight: 700; font-size: 1.25rem; color: var(--gold); text-decoration: none; margin-inline-end: auto; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.25rem; color: var(--gold); text-decoration: none; margin-inline-end: auto; }
+/* The icon tile is as dark as the page, so a hairline shows its shape. */
+.brand img { width: 28px; height: 28px; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
 .site-header nav { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .site-header nav a { color: var(--text); text-decoration: none; font-size: 0.95rem; }
 .site-header nav a:hover { color: var(--gold); }

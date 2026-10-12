@@ -221,6 +221,26 @@ class SiteTest(unittest.TestCase):
         for href in ["/", "/lens-compare/", "/cameras/", "/guides/"]:
             self.assertIn('<a href="%s">' % href, text)
 
+    def test_icons_and_logo_on_every_page(self):
+        """Favicon, Apple touch icon and the header logo, resolved from each page's own depth."""
+        for path in pages() + [os.path.join(ROOT, "404.html"), os.path.join(ROOT, "support.html"),
+                               os.path.join(ROOT, "privacy.html"), os.path.join(ROOT, "terms.html")]:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+            rel = os.path.relpath(path, ROOT)
+            with self.subTest(page=rel):
+                for href in re.findall(r'<link rel="(?:icon|apple-touch-icon)"[^>]* href="([^"]+)"', text) + [
+                        m for m in re.findall(r'<a class="brand"[^>]*><img src="([^"]+)"', text)]:
+                    target = os.path.join(ROOT, href.lstrip("/")) if href.startswith("/") \
+                        else os.path.normpath(os.path.join(os.path.dirname(path), href))
+                    self.assertTrue(os.path.exists(target), "missing icon %s" % href)
+                self.assertRegex(text, r'<link rel="icon" href="[./]*favicon\.ico"')
+                self.assertRegex(text, r'<link rel="apple-touch-icon" href="[./]*assets/apple-touch-icon\.png"')
+                if rel not in ("support.html", "privacy.html", "terms.html"):
+                    self.assertRegex(text, r'<a class="brand" href="[^"]*"><img src="[./]*assets/icon-192\.png" width="28" height="28" alt="">Prospekt</a>')
+                if '"@id": "%s"' % build.APP_ENTITY_ID in text:
+                    self.assertIn('"image": "%s"' % build.APP_ICON_URL, text)
+
     def test_price_is_in_the_html(self):
         with open(os.path.join(ROOT, "index.html"), encoding="utf-8") as f:
             self.assertIn("$3.99", f.read())
